@@ -2447,10 +2447,46 @@ spv::Id SpirvShaderTranslator::LoadOperandStorage(
       break;
     case InstructionStorageSource::kConstantFloat:
       assert_true(uniform_float_constants_ != spv::NoResult);
+      // Clamp dynamic indices to [0, float_count - 1] before the UBO
+      // AccessChain. Two purposes:
+      // 1. Prevents OOB UBO access: aL/a0 can produce out-of-range values for
+      //    shaders whose static analysis only covers a subset of the 256 float
+      //    constant registers.
+      // 2. Defeats Turnip's UBO indirect-access optimization: Turnip has a
+      //    known miscompile when OpAccessChain into a Uniform array uses a
+      //    non-constant index (DXVK issue #3861 - Dark Souls 3 geometry
+      //    corruption). The extra SMax/SMin prevent the optimization from
+      //    treating the index as effectively constant.
+      // Absolute-mode indices are compile-time constants and need no clamp.
+      if (operand.storage_addressing_mode !=
+          InstructionStorageAddressingMode::kAbsolute) {
+        uint32_t float_count =
+            current_shader().constant_register_map().float_count;
+        if (float_count > 0) {
+          spv::Id index_max =
+              builder_->makeIntConstant(int(float_count) - 1);
+          // Use GLSL.std.450 SMax/SMin (same pattern as elsewhere in this
+          // file). Clamp before building the AccessChain index vector.
+          id_vector_temp_util_.clear();
+          id_vector_temp_util_.push_back(index);
+          id_vector_temp_util_.push_back(const_int_0_);
+          index = builder_->createBuiltinCall(
+              type_int_, ext_inst_glsl_std_450_, GLSLstd450SMax,
+              id_vector_temp_util_);
+          id_vector_temp_util_.clear();
+          id_vector_temp_util_.push_back(index);
+          id_vector_temp_util_.push_back(index_max);
+          index = builder_->createBuiltinCall(
+              type_int_, ext_inst_glsl_std_450_, GLSLstd450SMin,
+              id_vector_temp_util_);
+        }
+      }
+      // Build AccessChain: [struct_member=0, array_element=index].
+      // id_vector_temp_util_ is rebuilt here after any clamp ops above.
       id_vector_temp_util_.clear();
       // The first and the only structure member.
       id_vector_temp_util_.push_back(const_int_0_);
-      // Array element.
+      // Array element (clamped if dynamic).
       id_vector_temp_util_.push_back(index);
       vec4_pointer = builder_->createAccessChain(spv::StorageClassUniform,
                                                  uniform_float_constants_,

@@ -2,6 +2,7 @@ package aenu.ax360e;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 import androidx.preference.PreferenceManager;
 
 import java.io.BufferedReader;
@@ -9,7 +10,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Manages Turnip driver environment variables based on user preferences.
@@ -30,32 +33,48 @@ public class TurnipEnvManager {
      */
     public List<EnvVar> buildEnvironmentVariables() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        Map<String, String> configValues = loadGlobalConfigValues();
         List<EnvVar> envVars = new ArrayList<>();
 
         // TU_DEBUG flags
         List<String> tuDebugFlags = new ArrayList<>();
 
-        if (prefs.getBoolean("TurnipAdvanced|gmem_mode", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|gmem_mode", false)) {
             tuDebugFlags.add("gmem");
         }
 
-        if (prefs.getBoolean("TurnipAdvanced|debug_logging", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|debug_logging", false)) {
             tuDebugFlags.add("startup");
             tuDebugFlags.add("nir");
         }
 
-        if (prefs.getBoolean("TurnipAdvanced|noubwc", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|noubwc", false)) {
             tuDebugFlags.add("noubwc");
         }
 
         // Sysmem mode - required for Adreno 830 where GMEM is broken
-        if (prefs.getBoolean("TurnipAdvanced|sysmem_mode", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|sysmem_mode", false)) {
             tuDebugFlags.add("sysmem");
         }
 
         // Disable Low Resolution Z - fixes Z-fighting and GPU hangs on some Adreno GPUs
-        if (prefs.getBoolean("TurnipAdvanced|nolrz", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|nolrz", false)) {
             tuDebugFlags.add("nolrz");
+        }
+
+        // Performance: Force binning pass for better TBDR tile utilization
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|forcebin", false)) {
+            tuDebugFlags.add("forcebin");
+        }
+
+        // Performance: Skip unnecessary GPU flushes between draw calls
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|noflush", false)) {
+            tuDebugFlags.add("noflush");
+        }
+
+        // Graphical fix: Disable visibility stream culling (fixes missing geometry)
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|novsc", false)) {
+            tuDebugFlags.add("novsc");
         }
 
         if (tuDebugFlags.isEmpty()) {
@@ -75,16 +94,79 @@ public class TurnipEnvManager {
         }
 
         // FD_DEV_FEATURES flags
-        if (prefs.getBoolean("TurnipAdvanced|ubwc_flag_hint", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|ubwc_flag_hint", false)) {
             envVars.add(new EnvVar("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1"));
         }
 
         // MESA_DEBUG - general Mesa debugging
-        if (prefs.getBoolean("TurnipAdvanced|debug_logging", false)) {
+        if (getBooleanSetting(configValues, prefs, "TurnipAdvanced|debug_logging", false)) {
             envVars.add(new EnvVar("MESA_DEBUG", "1"));
         }
 
         return envVars;
+    }
+
+    private boolean getBooleanSetting(
+            Map<String, String> configValues,
+            SharedPreferences prefs,
+            String key,
+            boolean defaultValue) {
+        String configValue = configValues.get(key);
+        if (configValue != null) {
+            return Boolean.parseBoolean(configValue);
+        }
+        return prefs.getBoolean(key, defaultValue);
+    }
+
+    private Map<String, String> loadGlobalConfigValues() {
+        Map<String, String> values = new HashMap<>();
+        File configFile = Application.get_global_config_file();
+        if (!configFile.exists() || !configFile.canRead()) {
+            return values;
+        }
+
+        String currentSection = null;
+        try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = stripInlineComment(line).trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                    currentSection = trimmed.substring(1, trimmed.length() - 1).trim();
+                    continue;
+                }
+
+                int equalsIndex = trimmed.indexOf('=');
+                if (equalsIndex <= 0 || currentSection == null) {
+                    continue;
+                }
+
+                String key = trimmed.substring(0, equalsIndex).trim();
+                String value = trimmed.substring(equalsIndex + 1).trim();
+                if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                values.put(currentSection + "|" + key, value);
+            }
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to read global config for Turnip settings", e);
+        }
+        return values;
+    }
+
+    private String stripInlineComment(String line) {
+        boolean inString = false;
+        for (int i = 0; i < line.length(); ++i) {
+            char character = line.charAt(i);
+            if (character == '"') {
+                inString = !inString;
+            } else if (character == '#' && !inString) {
+                return line.substring(0, i);
+            }
+        }
+        return line;
     }
 
     private String getRecommendedTuDebugForDevice() {

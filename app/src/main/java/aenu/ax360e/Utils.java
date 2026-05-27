@@ -146,5 +146,27 @@ public class Utils {
             android.util.Log.e("Utils", "Failed to extract assets dir: " + assertDir, e);
         }
     }
+
+    public static boolean runShell(String command, boolean root) {
+        Process process = null;
+        java.io.DataOutputStream os = null;
+        try {
+            process = Runtime.getRuntime().exec(root ? "su" : "sh");
+            os = new java.io.DataOutputStream(process.getOutputStream());
+            os.writeBytes(command + "\n");
+            os.writeBytes("exit\n");
+            os.flush();
+            process.waitFor();
+            return process.exitValue() == 0;
+        } catch (Exception e) {
+            android.util.Log.e("Utils", "Failed to execute shell command: " + command, e);
+            return false;
+        } finally {
+            try {
+                if (os != null) os.close();
+                if (process != null) process.destroy();
+            } catch (Exception ignored) {}
+        }
+    }
 }
 

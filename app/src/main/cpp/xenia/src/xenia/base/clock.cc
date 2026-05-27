@@ -10,6 +10,7 @@
 #include "xenia/base/clock.h"
 
 #include <algorithm>
+#include <atomic>
 #include <limits>
 #include <mutex>
 
@@ -39,12 +40,20 @@ uint64_t guest_system_time_base_ = Clock::QueryHostSystemTime();
 // Computed by RecomputeGuestTickScalar.
 std::pair<uint64_t, uint64_t> guest_tick_ratio_ = std::make_pair(1, 1);
 
-// Native guest ticks.
-uint64_t last_guest_tick_count_ = 0;
+// Native guest ticks. Atomic for lower-contention reads on Android multi-core.
+std::atomic<uint64_t> last_guest_tick_count_{0};
 // Last sampled host tick count.
-uint64_t last_host_tick_count_ = Clock::QueryHostTickCount();
+std::atomic<uint64_t> last_host_tick_count_{Clock::QueryHostTickCount()};
 // Mutex to ensure last_host_tick_count_ and last_guest_tick_count_ are in sync
 std::mutex tick_mutex_;
+
+// For potential memory-based LOAD_CLOCK lowering (inline load from shared counter).
+// Points to internal last_guest_tick_count storage.
+uint64_t* Clock::GetGuestTickCountPointer() {
+  // Address of atomic storage; loads must be atomic or relaxed for safety.
+  // On A64 backend we primarily use direct CNTVCT for precision anyway.
+  return reinterpret_cast<uint64_t*>(&last_guest_tick_count_);
+}
 
 void RecomputeGuestTickScalar() {
   // Create a rational number with numerator (first) and denominator (second)
@@ -64,6 +73,9 @@ void RecomputeGuestTickScalar() {
 
   std::lock_guard<std::mutex> lock(tick_mutex_);
   guest_tick_ratio_ = frac;
+  // Reset clock baseline on scalar change for better precision after speed change.
+  last_host_tick_count_.store(Clock::QueryHostTickCount(), std::memory_order_relaxed);
+  last_guest_tick_count_.store(0, std::memory_order_relaxed);
 }
 
 // Update the guest timer for all threads.
@@ -78,19 +90,22 @@ uint64_t UpdateGuestClock() {
 
   std::unique_lock<std::mutex> lock(tick_mutex_, std::defer_lock);
   if (lock.try_lock()) {
-    // Translate host tick count to guest tick count.
-    uint64_t host_tick_delta = host_tick_count > last_host_tick_count_
-                                   ? host_tick_count - last_host_tick_count_
+    // Translate host tick count to guest tick count. Use atomics for relaxed
+    // cross-thread visibility (important on ARM64 Android for timer fidelity).
+    uint64_t last_host = last_host_tick_count_.load(std::memory_order_relaxed);
+    uint64_t host_tick_delta = host_tick_count > last_host
+                                   ? host_tick_count - last_host
                                    : 0;
-    last_host_tick_count_ = host_tick_count;
+    last_host_tick_count_.store(host_tick_count, std::memory_order_relaxed);
     uint64_t guest_tick_delta =
         host_tick_delta * guest_tick_ratio_.first / guest_tick_ratio_.second;
-    last_guest_tick_count_ += guest_tick_delta;
-    return last_guest_tick_count_;
+    uint64_t new_guest = last_guest_tick_count_.load(std::memory_order_relaxed) + guest_tick_delta;
+    last_guest_tick_count_.store(new_guest, std::memory_order_relaxed);
+    return new_guest;
   } else {
     // Wait until another thread has finished updating the clock.
     lock.lock();
-    return last_guest_tick_count_;
+    return last_guest_tick_count_.load(std::memory_order_relaxed);
   }
 }
 
@@ -244,7 +259,22 @@ void Clock::ScaleGuestDurationTimeval(int32_t* tv_sec, int32_t* tv_usec) {
   *tv_usec = int32_t(scaled_usec);
 }
 
-    uint64_t Clock::QueryGuestInterruptTime() {
-        return Clock::QueryHostInterruptTime();
-    }
+uint64_t Clock::QueryGuestInterruptTime() {
+  // Interrupt time is similar to system time but for interrupt accounting.
+  // Provide a properly scaled guest version for fidelity.
+  if (cvars::clock_no_scaling) {
+    return Clock::QueryHostInterruptTime();
+  }
+
+  // Use same offset mechanism as system time but base from interrupt perspective.
+  // For simplicity and consistency with guest ticks, derive from guest tick count.
+  auto guest_tick_count = UpdateGuestClock();
+  uint64_t numerator = 10000000;  // 100ns units like FILETIME
+  uint64_t denominator = guest_tick_frequency_;
+  reduce_fraction(numerator, denominator);
+  uint64_t offset = guest_tick_count * numerator / denominator;
+  // Base it relative to host interrupt at start for delta fidelity.
+  static uint64_t guest_interrupt_base = Clock::QueryHostInterruptTime();
+  return guest_interrupt_base + offset;
+}
 }  // namespace xe

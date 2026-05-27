@@ -34,6 +34,7 @@ struct PPCBuiltins {
   Function* enter_global_lock;
   Function* leave_global_lock;
   Function* syscall_handler;
+  Function* check_decrementer_interrupt;  // new for DEC 0x900 delivery
 };
 
 class PPCFrontend {

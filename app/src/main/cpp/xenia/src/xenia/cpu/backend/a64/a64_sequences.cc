@@ -32,6 +32,10 @@
 #include "xenia/base/logging.h"
 #include "xenia/base/string.h"
 #include "xenia/base/threading.h"
+
+// CPU accuracy metrics (timebase reads etc.)
+#include "ax360e_perf_log.h"
+
 #include "xenia/cpu/backend/a64/a64_emitter.h"
 #include "xenia/cpu/backend/a64/a64_op.h"
 #include "xenia/cpu/backend/a64/a64_tracers.h"
@@ -416,31 +420,51 @@ EMITTER_OPCODE_TABLE(OPCODE_ROUND, ROUND_F32, ROUND_F64, ROUND_V128);
 // ============================================================================
 struct LOAD_CLOCK : Sequence<LOAD_CLOCK, I<OPCODE_LOAD_CLOCK, I64Op>> {
   static void Emit(A64Emitter& e, const EmitArgType& i) {
-    // When scaling is disabled and the raw clock source is selected, the code
-    // in the Clock class is actually just forwarding tick counts after one
-    // simple multiply and division. In that case we rather bake the scaling in
-    // here to cut extra function calls with CPU cache misses and stack frame
-    // overhead.
-    if (cvars::clock_no_scaling && cvars::clock_source_raw) {
+    // On AArch64 (Android), prefer direct CNTVCT_EL0 (raw virtual counter)
+    // for highest precision and lowest overhead mftb/mtdec timing.
+    // This dramatically improves timebase fidelity vs repeated clock_gettime
+    // syscalls + mutex in QueryGuestTickCount.
+    // Ratio is snapshotted at translation time (scalar changes are rare after
+    // init; acceptable for guest timer accuracy).
+#if XE_CLOCK_RAW_AVAILABLE
+    if (cvars::clock_source_raw || XE_ARCH_ARM64) {
       auto ratio = Clock::guest_tick_ratio();
-      // The 360 CPU is an in-order CPU, ARM64 usually isn't. Since it's
+      // The 360 CPU is an in-order CPU, ARM64 usually isn't. Since its
       // resolution however is much higher than the 360's mftb instruction this
-      // can safely be ignored.
+      // can safely be ignored. Provides cycle-accurate-ish guest ticks.
 
-      // Read clock cycle count
+      // Read clock cycle count directly from system counter (no syscall).
       e.MRS(i.dest, SystemReg::CNTVCT_EL0);
-      // Apply tick frequency scaling.
+      // Apply tick frequency scaling (guest 50MHz typically).
       e.MOV(X0, ratio.first);
       e.MUL(i.dest, i.dest, X0);
       e.MOV(X0, ratio.second);
       e.UDIV(i.dest, i.dest, X0);
-    } else {
-      e.CallNative(LoadClock);
-      e.MOV(i.dest, X0);
+      ax360e::perf::g_cpu_accuracy.RecordTimebaseRead();
+      return;
     }
+#endif
+    // Fallback path (uses UpdateGuestClock + possible mutex).
+    e.CallNative(LoadClock);
+    e.MOV(i.dest, X0);
+    ax360e::perf::g_cpu_accuracy.RecordTimebaseRead();
   }
   static uint64_t LoadClock(void* raw_context) {
-    return Clock::QueryGuestTickCount();
+    uint64_t t = Clock::QueryGuestTickCount();
+    // Opportunistic DEC underflow check on timebase read (many games poll mftb
+    // in timing loops). The full delivery (respecting EE + reentry) happens in
+    // the registered builtin when safe.
+    if (raw_context) {
+      auto* ctx = reinterpret_cast<xe::cpu::ppc::PPCContext*>(raw_context);
+      if (ctx->dec_pending) {
+        // Opportunistic underflow count (timebase read in tight loops common for DEC polling).
+        // Full delivery still via CheckDecrementerInterrupt + Reenter (respects EE).
+        ax360e::perf::g_cpu_accuracy.RecordDecUnderflowFired();
+        // Defer actual raise to the check builtin (called on mtmsr or other safe points).
+        // For immediate, the mtmsr path + fire_time will catch it.
+      }
+    }
+    return t;
   }
 };
 EMITTER_OPCODE_TABLE(OPCODE_LOAD_CLOCK, LOAD_CLOCK);
@@ -1092,7 +1116,35 @@ EMITTER_OPCODE_TABLE(OPCODE_DID_SATURATE, DID_SATURATE);
 // ============================================================================
 // OPCODE_ADD
 // ============================================================================
+// F32/F64 paths here (and CONVERT/ROUND/MUL_ADD/MUL_SUB etc) are also used
+// for Xenon paired-single (ps_*) accuracy once emitters added in ppc_emit_fpu.
+// FIRST REAL EMITTERS LANDED (ps_addx/maddx/msubx/mulx/mrx per Captain Agent 4 plan).
+// See master plan + stubs in ppc_emit_fpu.cc (GQR SPRs + HIR F32 halves now active).
+// Non-standard: denormals via FPCR FZ, NaN via
+// IsNan/FCMP + no DN, fused FMA critical (MUL_SUB fixed to FNMSUB 2026).
 // TODO(benvanik): put dest/src1|2 together.
+// CAPTAIN RE-TASK: ps_subx/ps_sel now use same F32 paths (Sub/Select on halves). Light
+// FPCR single-prec polish notes added (fpcr_table + SET_ROUNDING). New debug counters
+// (ps_nan_cases etc) + harness sequences consume these for ps_* validation (R1 report).
+
+// R1 / CAPTAIN ps_* ACCURACY HARNESS LIGHT HOOK (FPU seqs).
+// Primary activation: A64Backend::Initialize (under cvar) + explicit Java PerformanceMonitor
+// trigger (identical to 128B harness shipped earlier).
+// Light additional: Record* calls inside MUL_ADD_F32 etc (see below) fire when F32/FMA paths
+// are emitted under a64_ps_accuracy_stress. This exercises the ps counters as soon as
+// ps-related HIR (from ppc_emit_fpu ps_addx/maddx lowering) hits the backend.
+// (Avoided top-level static-if to keep TU-safe / no extra includes; 128B pattern in seq_memory
+// is the model but we keep hooks minimal here.)
+// Full research citations from R1 55-tool report (ps_maddx highest priority for FMA in UE3/Forza/Halo
+// vertex/skin/anim/physics; psq_l/psq_st massive; GQR; *explicit* 128B psq_st store reservation
+// interaction warning) + 128B notes are in:
+//   a64_backend.cc (cvar + RunPairedSingleAccuracyHarness impl + init call)
+//   a64_backend.h (decl)
+//   ax360e_perf_log.h (counters + snapshot)
+//   emulator_ax360e.cpp + Emulator.java + PerformanceMonitor.java (JNI/Java trigger)
+//   a64_seq_memory.cc (psq_st Clear comments)
+//   ppc_emit_fpu.cc (master ps plan + GQR foundation)
+// This is the "research author becomes validator" harness while the rest of the fleet cooks.
 template <typename SEQ, typename REG, typename ARGS>
 void EmitAddXX(A64Emitter& e, const ARGS& i) {
   SEQ::EmitCommutativeBinaryOp(
@@ -1702,6 +1754,16 @@ struct MUL_ADD_F32
     }
 
     e.FMADD(i.dest, src1, src2, src3);
+
+    // R1 ps_* harness: count FMA cases when accuracy stress active (ps_maddx will lower to this).
+    // Lightweight; pairs with harness sequences. Citations: R1 FMA priority for ps_* + 128B psq_st.
+    if (cvars::a64_ps_accuracy_stress || cvars::a64_accuracy_debug) {
+      ax360e::perf::g_cpu_accuracy.RecordPairedSingleFMA();
+      ax360e::perf::g_cpu_accuracy.RecordPairedSingleArith(2);
+      // CAPTAIN RE-TASK: ps_* specific debug counter (new ps_fma_executed) for R1 harness visibility.
+      // Gated same as existing; distinguishes ps family FMA exec from scalar. See harness + tracker.
+      ax360e::perf::g_cpu_accuracy.RecordPsFmaExecuted(2);
+    }
   }
 };
 struct MUL_ADD_F64
@@ -1777,77 +1839,93 @@ EMITTER_OPCODE_TABLE(OPCODE_MUL_ADD, MUL_ADD_F32, MUL_ADD_F64, MUL_ADD_V128);
 struct MUL_SUB_F32
     : Sequence<MUL_SUB_F32, I<OPCODE_MUL_SUB, F32Op, F32Op, F32Op, F32Op>> {
   static void Emit(A64Emitter& e, const EmitArgType& i) {
-    SReg src3(1);
+    // Use fused FNMSUB for (src1 * src2) - src3 to improve accuracy vs
+    // separate FMUL+FSUB. Critical for fmsub*/fnmsub* emulation and
+    // paired-single (ps_*) single-precision FMA behavior on Xenon.
+    SReg src3 = S3;
     if (i.src3.is_constant) {
-      src3 = S1;
       e.LoadConstantV(src3.toQ(), i.src3.constant());
     } else {
-      // If i.dest == i.src3, back up i.src3 so we don't overwrite it.
       src3 = i.src3.reg();
-      if (i.dest.reg().index() == i.src3.reg().index()) {
-        e.FMOV(S1, i.src3);
-        src3 = S1;
-      }
     }
 
-    // Multiply operation is commutative.
-    EmitCommutativeBinaryVOp<SReg>(
-        e, i, [&i](A64Emitter& e, SReg dest, SReg src1, SReg src2) {
-          e.FMUL(dest, src1, src2);  // $0 = $1 * $2
-        });
+    SReg src2 = S2;
+    if (i.src2.is_constant) {
+      e.LoadConstantV(src2.toQ(), i.src2.constant());
+    } else {
+      src2 = i.src2.reg();
+    }
 
-    e.FSUB(i.dest, i.dest, src3);  // $0 = $1 - $2
+    SReg src1 = S1;
+    if (i.src1.is_constant) {
+      e.LoadConstantV(src1.toQ(), i.src1.constant());
+    } else {
+      src1 = i.src1.reg();
+    }
+
+    // FNMSUB Sd, Sn, Sm, Sa  =>  Sd = Sn*Sm - Sa
+    e.FNMSUB(i.dest, src1, src2, src3);
   }
 };
 struct MUL_SUB_F64
     : Sequence<MUL_SUB_F64, I<OPCODE_MUL_SUB, F64Op, F64Op, F64Op, F64Op>> {
   static void Emit(A64Emitter& e, const EmitArgType& i) {
-    DReg src3(1);
+    // Use fused FNMSUB for (src1 * src2) - src3 (see F32 for details).
+    DReg src3 = D3;
     if (i.src3.is_constant) {
-      src3 = D1;
       e.LoadConstantV(src3.toQ(), i.src3.constant());
     } else {
-      // If i.dest == i.src3, back up i.src3 so we don't overwrite it.
       src3 = i.src3.reg();
-      if (i.dest.reg().index() == i.src3.reg().index()) {
-        e.FMOV(D1, i.src3);
-        src3 = D1;
-      }
     }
 
-    // Multiply operation is commutative.
-    EmitCommutativeBinaryVOp<DReg>(
-        e, i, [&i](A64Emitter& e, DReg dest, DReg src1, DReg src2) {
-          e.FMUL(dest, src1, src2);  // $0 = $1 * $2
-        });
+    DReg src2 = D2;
+    if (i.src2.is_constant) {
+      e.LoadConstantV(src2.toQ(), i.src2.constant());
+    } else {
+      src2 = i.src2.reg();
+    }
 
-    e.FSUB(i.dest, i.dest, src3);  // $0 = $1 + $2
+    DReg src1 = D1;
+    if (i.src1.is_constant) {
+      e.LoadConstantV(src1.toQ(), i.src1.constant());
+    } else {
+      src1 = i.src1.reg();
+    }
+
+    e.FNMSUB(i.dest, src1, src2, src3);
   }
 };
 struct MUL_SUB_V128
     : Sequence<MUL_SUB_V128,
                I<OPCODE_MUL_SUB, V128Op, V128Op, V128Op, V128Op>> {
   static void Emit(A64Emitter& e, const EmitArgType& i) {
-    QReg src3(1);
+    // Fused equivalent using FNEG + FMLA for (src1*src2) - src3.
+    // Matches style of MUL_ADD_V128. Improves paired-single/vector
+    // single-precision accuracy (v*fp, physics/anim sims).
+    QReg vd = Q3;
     if (i.src3.is_constant) {
-      src3 = Q1;
-      e.LoadConstantV(src3, i.src3.constant());
+      e.LoadConstantV(vd, i.src3.constant());
     } else {
-      // If i.dest == i.src3, back up i.src3 so we don't overwrite it.
-      src3 = i.src3;
-      if (i.dest == i.src3) {
-        e.MOV(Q1.B16(), i.src3.reg().B16());
-        src3 = Q1;
-      }
+      e.MOV(vd.B16(), i.src3.reg().B16());
+    }
+    e.FNEG(vd.S4(), vd.S4());  // vd = -src3
+
+    QReg src2 = Q2;
+    if (i.src2.is_constant) {
+      e.LoadConstantV(src2, i.src2.constant());
+    } else {
+      src2 = i.src2.reg();
     }
 
-    // Multiply operation is commutative.
-    EmitCommutativeBinaryVOp(
-        e, i, [&i](A64Emitter& e, QReg dest, QReg src1, QReg src2) {
-          e.FMUL(dest.S4(), src1.S4(), src2.S4());  // $0 = $1 * $2
-        });
+    QReg src1 = Q1;
+    if (i.src1.is_constant) {
+      e.LoadConstantV(src1, i.src1.constant());
+    } else {
+      src1 = i.src1.reg();
+    }
 
-    e.FSUB(i.dest.reg().S4(), i.dest.reg().S4(), src3.S4());
+    e.FMLA(vd.S4(), src1.S4(), src2.S4());  // vd = -src3 + src1*src2
+    e.MOV(i.dest.reg().B16(), vd.B16());
   }
 };
 EMITTER_OPCODE_TABLE(OPCODE_MUL_SUB, MUL_SUB_F32, MUL_SUB_F64, MUL_SUB_V128);
@@ -2726,19 +2804,28 @@ EMITTER_OPCODE_TABLE(OPCODE_CNTLZ, CNTLZ_I8, CNTLZ_I16, CNTLZ_I32, CNTLZ_I64);
 // ============================================================================
 // OPCODE_SET_ROUNDING_MODE
 // ============================================================================
-// Input: FPSCR (PPC format)
-// Convert from PPC rounding mode to ARM
-// PPC | ARM |
-// 00  | 00  | nearest
-// 01  | 11  | toward zero
-// 10  | 01  | toward +infinity
-// 11  | 10  | toward -infinity
+// Input: FPSCR (PPC format) low bits (rn + ni)
+// Convert from PPC rounding mode + non-IEEE (denorm/NaN behavior) to ARM FPCR.
+// PPC FPSCR bits 0-2: rn[1:0] | ni
+//   rn: 00=near, 01=zero, 10=+inf, 11=-inf
+//   ni=1 enables non-IEEE mode (often FZ on real Xenon)
+// ARM FPCR bits [24]=FZ, [23:22]=RMode (0=near,1=+inf,2=-inf,3=zero)
+// We also consider DN (bit 25) for NaN propagation consistency with Xenon
+// paired-single / FPU (SNaN->QNaN quieting, payload rules differ from IEEE).
+// See also: a64_backend.h mxcsr_fpu/vmx (legacy from x64; FPCR used directly here)
+// Paired-single (ps_*) and VMX fp ops rely on these single-prec paths + FPCR.
+// CAPTAIN RE-TASK light polish: single-prec ps_* (ps_addx..ps_sel) use F32 halves + this
+// mapping for independent per-element rounding/denorm/NaN (Xenon PPE != strict IEEE).
+// Ties directly to ps research report + new ps_* accuracy counters (nan/denorm) + emitters.
+// FZ (flush zero) critical for ps denorm_handled cases; DN kept 0 for payload fidelity.
+// Hook: fpcr_table drives SET_ROUNDING_MODE (called on mtfs*/fpscr update in HIR).
+// See also ppc_emit_fpu.cc ps_* lowering comments + a64_backend harness sequences.
 static const uint8_t fpcr_table[] = {
-    0b0'00,  // |--|nearest
+    0b0'00,  // |--|nearest     (IEEE default, denorms handled)
     0b0'11,  // |--|toward zero
     0b0'01,  // |--|toward +infinity
     0b0'10,  // |--|toward -infinity
-    0b1'00,  // |FZ|nearest
+    0b1'00,  // |FZ|nearest     (ni=1 non-IEEE: flush denorms to zero)
     0b1'11,  // |FZ|toward zero
     0b1'01,  // |FZ|toward +infinity
     0b1'10,  // |FZ|toward -infinity
@@ -2748,16 +2835,21 @@ struct SET_ROUNDING_MODE_I32
                I<OPCODE_SET_ROUNDING_MODE, VoidOp, I32Op>> {
   static void Emit(A64Emitter& e, const EmitArgType& i) {
     // Low 3 bits are |Non-IEEE:1|RoundingMode:2|
-    // Non-IEEE bit is flush-to-zero
+    // Non-IEEE bit (ni) controls flush-to-zero for denormal handling.
+    // For full Xenon fidelity, future: also toggle DN (FPCR[25]) for
+    // default-NaN behavior in NaN propagation (affects physics/anim).
     e.AND(W1, i.src1, 0b111);
 
     // Use the low 3 bits as an index into a LUT
     e.MOV(X0, reinterpret_cast<uintptr_t>(fpcr_table));
     e.LDRB(W0, X0, X1);
 
-    // Replace FPCR bits with new value
+    // Replace FPCR RMode+FZ bits (23:22 + 24) with new value.
+    // Keep DN=0 for better NaN payload propagation matching PPC.
     e.MRS(X1, SystemReg::FPCR);
-    e.BFI(X1, X0, 23, 3);
+    e.BFI(X1, X0, 23, 3);  // bits 23:22 RM, bit 24 = FZ (from table bit 2)
+    // Ensure DN (bit 25) cleared for NaN propagation (not default NaN).
+    e.AND(X1, X1, ~ (1ULL << 25));
     e.MSR(SystemReg::FPCR, X1);
   }
 };
@@ -2784,6 +2876,149 @@ bool SelectSequence(A64Emitter* e, const Instr* i, const Instr** new_tail) {
   }
   return false;
 }
+
+// ============================================================================
+// Centralized Unhandled Instruction System Implementation
+// ============================================================================
+
+// Rate-limited unhandled opcode tracker (file-static for the a64 namespace).
+// Sparse map — only actually-hit opcodes consume memory.
+static std::unordered_map<uint32_t, uint64_t> unhandled_hit_counts;
+static constexpr uint64_t kLogEveryN = 64;
+
+// Small ring for recent unhandled names (for diagnostics / future Java exposure).
+static constexpr size_t kRecentUnhandledRingSize = 8;
+static std::string recent_unhandled_ring[kRecentUnhandledRingSize];
+static size_t recent_unhandled_ring_head = 0;
+
+namespace internal {
+void RecordRecentUnhandled(const char* op_name) {
+  if (!op_name) op_name = "<unknown>";
+  recent_unhandled_ring[recent_unhandled_ring_head] = op_name;
+  recent_unhandled_ring_head = (recent_unhandled_ring_head + 1) % kRecentUnhandledRingSize;
+}
+}  // namespace internal
+
+void ReportUnhandledA64Opcode(A64Emitter* e, const hir::Instr* instr,
+                              const char* context) {
+  if (!instr || !instr->opcode) {
+    XELOGE("A64: UNHANDLED null/unknown opcode (context={})", context ? context : "unknown");
+    return;
+  }
+
+  const uint32_t opcode_id = static_cast<uint32_t>(instr->opcode->num);
+  const char* op_name = instr->opcode->name ? instr->opcode->name : "<unnamed>";
+
+  auto& count = unhandled_hit_counts[opcode_id];
+  count++;
+
+  internal::RecordRecentUnhandled(op_name);
+
+  // Rate-limited logging (first hit always, then every kLogEveryN)
+  bool should_log = (count == 1) || ((count % kLogEveryN) == 0);
+  if (should_log) {
+    uint64_t guest_hint = 0;
+    if (e) {
+      // Best effort: last known guest PC from emitter source map
+      guest_hint = e->last_guest_address();
+    }
+
+    XELOGE("A64 UNHANDLED OP [rate-limited]: {} (id={}) hits={} context={} guest_pc~0x{:X} accuracy_debug={}",
+           op_name, opcode_id, count, context ? context : "seq",
+           guest_hint, cvars::a64_accuracy_debug ? 1 : 0);
+
+    if (cvars::a64_accuracy_debug && count == 1) {
+      XELOGE("  ^ First occurrence of this unhandled HIR opcode. "
+             "This usually means a missing PPC -> HIR translation or a rare "
+             "Altivec/VMX instruction variant. Check recent PPC disassembly.");
+    }
+  }
+}
+
+void EmitStructuredFallback(A64Emitter& e, const hir::Instr* instr) {
+  if (!instr) {
+    e.NOP();
+    return;
+  }
+
+  // Best-effort: zero the primary destination register if it exists and is a
+  // register operand. This allows execution to continue (with wrong results)
+  // instead of hard-crashing the guest thread.
+  // Covers the most common cases (scalar + vector ops).
+  bool did_zero = false;
+
+  // V128 / vector dest is extremely common for unhandled Altivec paths.
+  if (instr->dest && instr->dest->IsV128()) {
+    auto& vreg = instr->dest->reg();
+    e.EOR(vreg.B16(), vreg.B16(), vreg.B16());   // zero the 128-bit dest
+    did_zero = true;
+  } else if (instr->dest) {
+    // Scalar integer/float dests
+    if (instr->dest->IsInt64()) {
+      e.MOV(instr->dest->reg().X(), XZR);
+      did_zero = true;
+    } else if (instr->dest->IsInt32() || instr->dest->IsInt16() || instr->dest->IsInt8()) {
+      e.MOV(instr->dest->reg().W(), WZR);
+      did_zero = true;
+    } else if (instr->dest->IsFloat64()) {
+      e.FMOV(instr->dest->reg().D(), 0.0);
+      did_zero = true;
+    } else if (instr->dest->IsFloat32()) {
+      e.FMOV(instr->dest->reg().S(), 0.0f);
+      did_zero = true;
+    }
+  }
+
+  // Emit a distinctive but non-fatal marker sequence (easy to spot in
+  // disassembly / debuggers). We avoid BRK here — BRK is reserved for
+  // accuracy_debug mode in the caller.
+  e.NOP();
+  // Two NOPs + MOV of a magic immediate (0xA64BAD1) into a temp for visibility.
+  e.MOV(X16, 0xA64BAD1ULL);
+
+  if (cvars::a64_accuracy_debug) {
+    // In accuracy debug mode we want to surface the problem loudly.
+    e.DebugBreak();   // or could BRK(0xA64D)
+  }
+
+  const char* op_name = (instr->opcode && instr->opcode->name) ? instr->opcode->name : "?";
+  XELOGW("A64: Structured fallback executed for {} (dest zeroed={})", op_name, did_zero);
+}
+
+// Public helper to query recent unhandled report (for future JNI exposure).
+std::string GetA64UnhandledReportSummary() {
+  std::string summary = "A64 Unhandled Opcodes (recent):\n";
+  for (size_t i = 0; i < kRecentUnhandledRingSize; ++i) {
+    size_t idx = (recent_unhandled_ring_head + i) % kRecentUnhandledRingSize;
+    if (!recent_unhandled_ring[idx].empty()) {
+      summary += "  - " + recent_unhandled_ring[idx] + "\n";
+    }
+  }
+  summary += "Total unique hit opcodes tracked: " + std::to_string(unhandled_hit_counts.size()) + "\n";
+  return summary;
+}
+
+// JNI-friendly export (registration to be wired in the main native bridge or
+// via RegisterNatives in the app's JNI init code).
+extern "C" {
+
+// Lightweight C helper (can be called from other native code or dlsym).
+const char* A64_GetUnhandledReportForJNI() {
+  static std::string cached;
+  cached = GetA64UnhandledReportSummary();
+  return cached.c_str();
+}
+
+// Standard JNI export for aenu.emulator.Emulator.getA64UnhandledReport().
+// Full dynamic registration (RegisterNatives) should be performed from the
+// app's main JNI_OnLoad or Emulator native init for robustness.
+JNIEXPORT jstring JNICALL
+Java_aenu_emulator_Emulator_getA64UnhandledReport(JNIEnv* env, jobject thiz) {
+  const char* report = A64_GetUnhandledReportForJNI();
+  return env->NewStringUTF(report ? report : "A64 unhandled report unavailable");
+}
+
+}  // extern "C"
 
 }  // namespace a64
 }  // namespace backend

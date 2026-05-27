@@ -170,7 +170,9 @@ class HIRBuilder {
   void Memset(Value* address, Value* value, Value* length);
   void CacheControl(Value* address, size_t cache_line_size,
                     CacheControlType type);
-  void MemoryBarrier();
+  // Uses existing MEMORY_BARRIER opcode + its flags field for type.
+  // Default = full sync for backward compat with all prior call sites.
+  void MemoryBarrier(MemoryBarrierType type = MEMORY_BARRIER_TYPE_FULL_SYNC);
 
   void SetRoundingMode(Value* value);
   Value* Max(Value* value1, Value* value2);

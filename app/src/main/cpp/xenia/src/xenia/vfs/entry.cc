@@ -11,6 +11,7 @@
 
 #include "xenia/base/filesystem.h"
 #include "xenia/base/string.h"
+#include "xenia/base/utf8.h"
 #include "xenia/vfs/device.h"
 
 namespace xe {
@@ -34,6 +35,10 @@ Entry::Entry(Device* device, Entry* parent, const std::string_view path)
 
 Entry::~Entry() = default;
 
+void Entry::MarkChildLookupDirty() {
+  child_lookup_dirty_ = true;
+}
+
 void Entry::Dump(xe::StringBuffer* string_buffer, int indent) {
   for (int i = 0; i < indent; ++i) {
     string_buffer->Append(' ');
@@ -49,14 +54,19 @@ bool Entry::is_read_only() const { return device_->is_read_only(); }
 
 Entry* Entry::GetChild(const std::string_view name) {
   auto global_lock = global_critical_region_.Acquire();
-  auto it = std::find_if(children_.cbegin(), children_.cend(),
-                         [&](const auto& child) {
-                           return xe::utf8::equal_case(child->name(), name);
-                         });
-  if (it == children_.cend()) {
+  if (child_lookup_dirty_) {
+    child_lookup_.clear();
+    child_lookup_.reserve(children_.size());
+    for (const auto& child : children_) {
+      child_lookup_.emplace(xe::utf8::lower_ascii(child->name()), child.get());
+    }
+    child_lookup_dirty_ = false;
+  }
+  auto it = child_lookup_.find(xe::utf8::lower_ascii(name));
+  if (it == child_lookup_.end()) {
     return nullptr;
   }
-  return (*it).get();
+  return it->second;
 }
 
 Entry* Entry::ResolvePath(const std::string_view path) {
@@ -99,6 +109,7 @@ Entry* Entry::CreateEntry(const std::string_view name, uint32_t attributes) {
     return nullptr;
   }
   children_.push_back(std::move(entry));
+  child_lookup_dirty_ = true;
   // TODO(benvanik): resort? would break iteration?
   Touch();
   return children_.back().get();
@@ -118,6 +129,7 @@ bool Entry::Delete(Entry* entry) {
   for (auto it = children_.begin(); it != children_.end(); ++it) {
     if (it->get() == entry) {
       children_.erase(it);
+      child_lookup_dirty_ = true;
       break;
     }
   }
@@ -149,6 +161,9 @@ void Entry::Rename(const std::filesystem::path file_path) {
                                               guest_path_without_root);
   path_ = guest_path_without_root;
   name_ = xe::path_to_utf8(file_path.filename());
+  if (parent_) {
+    parent_->MarkChildLookupDirty();
+  }
 }
 
 }  // namespace vfs

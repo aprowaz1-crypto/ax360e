@@ -1,0 +1,1203 @@
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `D:\ax360e++\aX360e\app\.cxx\Debug\6kx57t1q\arm64-v8a'
+  [1/270] Building CXX object CMakeFiles/emu.dir/vk_symbols.cpp.o
+  FAILED: CMakeFiles/emu.dir/vk_symbols.cpp.o 
+  C:\Users\kirby\AppData\Local\Android\Sdk\ndk\27.0.12077973\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/kirby/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Demu_EXPORTS -ID:/ax360e++/aX360e/app/src/main/cpp -ID:/ax360e++/aX360e/app/src/main/cpp/xenia -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/src -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fno-limit-debug-info  -fPIC -march=armv8-a -stdlib=libc++ -fPIC -fno-omit-frame-pointer -funwind-tables -MD -MT CMakeFiles/emu.dir/vk_symbols.cpp.o -MF CMakeFiles\emu.dir\vk_symbols.cpp.o.d -o CMakeFiles/emu.dir/vk_symbols.cpp.o -c D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:2:1: error: unknown type name 'PFN_vkAcquireNextImageKHR'
+      2 | VKFN(vkAcquireNextImageKHR);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:2:1: note: expanded from here
+      2 | PFN_vkAcquireNextImageKHR
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:3:1: error: unknown type name 'PFN_vkAllocateCommandBuffers'
+      3 | VKFN(vkAllocateCommandBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:4:1: note: expanded from here
+      4 | PFN_vkAllocateCommandBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:4:1: error: unknown type name 'PFN_vkAllocateDescriptorSets'
+      4 | VKFN(vkAllocateDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:6:1: note: expanded from here
+      6 | PFN_vkAllocateDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:5:1: error: unknown type name 'PFN_vkAllocateMemory'
+      5 | VKFN(vkAllocateMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:8:1: note: expanded from here
+      8 | PFN_vkAllocateMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:6:1: error: unknown type name 'PFN_vkBeginCommandBuffer'
+      6 | VKFN(vkBeginCommandBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:10:1: note: expanded from here
+     10 | PFN_vkBeginCommandBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:7:1: error: unknown type name 'PFN_vkBindBufferMemory'
+      7 | VKFN(vkBindBufferMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:12:1: note: expanded from here
+     12 | PFN_vkBindBufferMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:8:1: error: unknown type name 'PFN_vkBindImageMemory'
+      8 | VKFN(vkBindImageMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:14:1: note: expanded from here
+     14 | PFN_vkBindImageMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:9:1: error: unknown type name 'PFN_vkCmdBeginConditionalRenderingEXT'
+      9 | VKFN(vkCmdBeginConditionalRenderingEXT);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:16:1: note: expanded from here
+     16 | PFN_vkCmdBeginConditionalRenderingEXT
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:10:1: error: unknown type name 'PFN_vkCmdBeginQuery'
+     10 | VKFN(vkCmdBeginQuery);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:18:1: note: expanded from here
+     18 | PFN_vkCmdBeginQuery
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:11:1: error: unknown type name 'PFN_vkCmdBeginRenderPass'
+     11 | VKFN(vkCmdBeginRenderPass);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:20:1: note: expanded from here
+     20 | PFN_vkCmdBeginRenderPass
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:12:1: error: unknown type name 'PFN_vkCmdBindDescriptorSets'
+     12 | VKFN(vkCmdBindDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:22:1: note: expanded from here
+     22 | PFN_vkCmdBindDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:13:1: error: unknown type name 'PFN_vkCmdBindIndexBuffer'
+     13 | VKFN(vkCmdBindIndexBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:24:1: note: expanded from here
+     24 | PFN_vkCmdBindIndexBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:14:1: error: unknown type name 'PFN_vkCmdBindPipeline'
+     14 | VKFN(vkCmdBindPipeline);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:26:1: note: expanded from here
+     26 | PFN_vkCmdBindPipeline
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:15:1: error: unknown type name 'PFN_vkCmdBindVertexBuffers'
+     15 | VKFN(vkCmdBindVertexBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:28:1: note: expanded from here
+     28 | PFN_vkCmdBindVertexBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:16:1: error: unknown type name 'PFN_vkCmdBlitImage'
+     16 | VKFN(vkCmdBlitImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:30:1: note: expanded from here
+     30 | PFN_vkCmdBlitImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:17:1: error: unknown type name 'PFN_vkCmdClearAttachments'
+     17 | VKFN(vkCmdClearAttachments);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:32:1: note: expanded from here
+     32 | PFN_vkCmdClearAttachments
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:18:1: error: unknown type name 'PFN_vkCmdClearColorImage'
+     18 | VKFN(vkCmdClearColorImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:34:1: note: expanded from here
+     34 | PFN_vkCmdClearColorImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:19:1: error: unknown type name 'PFN_vkCmdClearDepthStencilImage'
+     19 | VKFN(vkCmdClearDepthStencilImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:36:1: note: expanded from here
+     36 | PFN_vkCmdClearDepthStencilImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.cpp:1:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:20:1: error: unknown type name 'PFN_vkCmdCopyBuffer'
+     20 | VKFN(vkCmdCopyBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:38:1: note: expanded from here
+     38 | PFN_vkCmdCopyBuffer
+        | ^
+  fatal error: too many errors emitted, stopping now [-ferror-limit=]
+  20 errors generated.
+  [2/270] Building C object CMakeFiles/libavcodec.dir/xenia/third_party/FFmpeg/libavcodec/wma_common.c.o
+  [3/270] Building C object CMakeFiles/libavcodec.dir/xenia/third_party/FFmpeg/libavcodec/wma.c.o
+  [4/270] Building C object CMakeFiles/libavcodec.dir/xenia/third_party/FFmpeg/libavcodec/wmadec.c.o
+  [5/270] Building C object CMakeFiles/libavcodec.dir/xenia/third_party/FFmpeg/libavcodec/wmaprodec.c.o
+  clang: warning: argument unused during compilation: '-stdlib=libc++' [-Wunused-command-line-argument]
+  [6/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/bit_stream.cc.o
+  [7/270] Building CXX object CMakeFiles/emu.dir/vkutil.cpp.o
+  FAILED: CMakeFiles/emu.dir/vkutil.cpp.o 
+  C:\Users\kirby\AppData\Local\Android\Sdk\ndk\27.0.12077973\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/kirby/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Demu_EXPORTS -ID:/ax360e++/aX360e/app/src/main/cpp -ID:/ax360e++/aX360e/app/src/main/cpp/xenia -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/src -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fno-limit-debug-info  -fPIC -march=armv8-a -stdlib=libc++ -fPIC -fno-omit-frame-pointer -funwind-tables -MD -MT CMakeFiles/emu.dir/vkutil.cpp.o -MF CMakeFiles\emu.dir\vkutil.cpp.o.d -o CMakeFiles/emu.dir/vkutil.cpp.o -c D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:2:1: error: unknown type name 'PFN_vkAcquireNextImageKHR'
+      2 | VKFN(vkAcquireNextImageKHR);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:2:1: note: expanded from here
+      2 | PFN_vkAcquireNextImageKHR
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:3:1: error: unknown type name 'PFN_vkAllocateCommandBuffers'
+      3 | VKFN(vkAllocateCommandBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:4:1: note: expanded from here
+      4 | PFN_vkAllocateCommandBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:4:1: error: unknown type name 'PFN_vkAllocateDescriptorSets'
+      4 | VKFN(vkAllocateDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:6:1: note: expanded from here
+      6 | PFN_vkAllocateDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:5:1: error: unknown type name 'PFN_vkAllocateMemory'
+      5 | VKFN(vkAllocateMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:8:1: note: expanded from here
+      8 | PFN_vkAllocateMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:6:1: error: unknown type name 'PFN_vkBeginCommandBuffer'
+      6 | VKFN(vkBeginCommandBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:10:1: note: expanded from here
+     10 | PFN_vkBeginCommandBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:7:1: error: unknown type name 'PFN_vkBindBufferMemory'
+      7 | VKFN(vkBindBufferMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:12:1: note: expanded from here
+     12 | PFN_vkBindBufferMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:8:1: error: unknown type name 'PFN_vkBindImageMemory'
+      8 | VKFN(vkBindImageMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:14:1: note: expanded from here
+     14 | PFN_vkBindImageMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:9:1: error: unknown type name 'PFN_vkCmdBeginConditionalRenderingEXT'
+      9 | VKFN(vkCmdBeginConditionalRenderingEXT);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:16:1: note: expanded from here
+     16 | PFN_vkCmdBeginConditionalRenderingEXT
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:10:1: error: unknown type name 'PFN_vkCmdBeginQuery'
+     10 | VKFN(vkCmdBeginQuery);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:18:1: note: expanded from here
+     18 | PFN_vkCmdBeginQuery
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:11:1: error: unknown type name 'PFN_vkCmdBeginRenderPass'
+     11 | VKFN(vkCmdBeginRenderPass);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:20:1: note: expanded from here
+     20 | PFN_vkCmdBeginRenderPass
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:12:1: error: unknown type name 'PFN_vkCmdBindDescriptorSets'
+     12 | VKFN(vkCmdBindDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:22:1: note: expanded from here
+     22 | PFN_vkCmdBindDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:13:1: error: unknown type name 'PFN_vkCmdBindIndexBuffer'
+     13 | VKFN(vkCmdBindIndexBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:24:1: note: expanded from here
+     24 | PFN_vkCmdBindIndexBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:14:1: error: unknown type name 'PFN_vkCmdBindPipeline'
+     14 | VKFN(vkCmdBindPipeline);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:26:1: note: expanded from here
+     26 | PFN_vkCmdBindPipeline
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:15:1: error: unknown type name 'PFN_vkCmdBindVertexBuffers'
+     15 | VKFN(vkCmdBindVertexBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:28:1: note: expanded from here
+     28 | PFN_vkCmdBindVertexBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:16:1: error: unknown type name 'PFN_vkCmdBlitImage'
+     16 | VKFN(vkCmdBlitImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:30:1: note: expanded from here
+     30 | PFN_vkCmdBlitImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:17:1: error: unknown type name 'PFN_vkCmdClearAttachments'
+     17 | VKFN(vkCmdClearAttachments);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:32:1: note: expanded from here
+     32 | PFN_vkCmdClearAttachments
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:18:1: error: unknown type name 'PFN_vkCmdClearColorImage'
+     18 | VKFN(vkCmdClearColorImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:34:1: note: expanded from here
+     34 | PFN_vkCmdClearColorImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:19:1: error: unknown type name 'PFN_vkCmdClearDepthStencilImage'
+     19 | VKFN(vkCmdClearDepthStencilImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:36:1: note: expanded from here
+     36 | PFN_vkCmdClearDepthStencilImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.cpp:6:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:20:1: error: unknown type name 'PFN_vkCmdCopyBuffer'
+     20 | VKFN(vkCmdCopyBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:38:1: note: expanded from here
+     38 | PFN_vkCmdCopyBuffer
+        | ^
+  fatal error: too many errors emitted, stopping now [-ferror-limit=]
+  20 errors generated.
+  [8/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/byte_stream.cc.o
+  [9/270] Building CXX object CMakeFiles/emu.dir/adreno_driver.cpp.o
+  FAILED: CMakeFiles/emu.dir/adreno_driver.cpp.o 
+  C:\Users\kirby\AppData\Local\Android\Sdk\ndk\27.0.12077973\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/kirby/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Demu_EXPORTS -ID:/ax360e++/aX360e/app/src/main/cpp -ID:/ax360e++/aX360e/app/src/main/cpp/xenia -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/src -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fno-limit-debug-info  -fPIC -march=armv8-a -stdlib=libc++ -fPIC -fno-omit-frame-pointer -funwind-tables -MD -MT CMakeFiles/emu.dir/adreno_driver.cpp.o -MF CMakeFiles\emu.dir\adreno_driver.cpp.o.d -o CMakeFiles/emu.dir/adreno_driver.cpp.o -c D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:2:1: error: unknown type name 'PFN_vkAcquireNextImageKHR'
+      2 | VKFN(vkAcquireNextImageKHR);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:26:1: note: expanded from here
+     26 | PFN_vkAcquireNextImageKHR
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:3:1: error: unknown type name 'PFN_vkAllocateCommandBuffers'
+      3 | VKFN(vkAllocateCommandBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:28:1: note: expanded from here
+     28 | PFN_vkAllocateCommandBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:4:1: error: unknown type name 'PFN_vkAllocateDescriptorSets'
+      4 | VKFN(vkAllocateDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:30:1: note: expanded from here
+     30 | PFN_vkAllocateDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:5:1: error: unknown type name 'PFN_vkAllocateMemory'
+      5 | VKFN(vkAllocateMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:32:1: note: expanded from here
+     32 | PFN_vkAllocateMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:6:1: error: unknown type name 'PFN_vkBeginCommandBuffer'
+      6 | VKFN(vkBeginCommandBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:34:1: note: expanded from here
+     34 | PFN_vkBeginCommandBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:7:1: error: unknown type name 'PFN_vkBindBufferMemory'
+      7 | VKFN(vkBindBufferMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:36:1: note: expanded from here
+     36 | PFN_vkBindBufferMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:8:1: error: unknown type name 'PFN_vkBindImageMemory'
+      8 | VKFN(vkBindImageMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:38:1: note: expanded from here
+     38 | PFN_vkBindImageMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:9:1: error: unknown type name 'PFN_vkCmdBeginConditionalRenderingEXT'
+      9 | VKFN(vkCmdBeginConditionalRenderingEXT);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:40:1: note: expanded from here
+     40 | PFN_vkCmdBeginConditionalRenderingEXT
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:10:1: error: unknown type name 'PFN_vkCmdBeginQuery'
+     10 | VKFN(vkCmdBeginQuery);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:42:1: note: expanded from here
+     42 | PFN_vkCmdBeginQuery
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:11:1: error: unknown type name 'PFN_vkCmdBeginRenderPass'
+     11 | VKFN(vkCmdBeginRenderPass);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:44:1: note: expanded from here
+     44 | PFN_vkCmdBeginRenderPass
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:12:1: error: unknown type name 'PFN_vkCmdBindDescriptorSets'
+     12 | VKFN(vkCmdBindDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:46:1: note: expanded from here
+     46 | PFN_vkCmdBindDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:13:1: error: unknown type name 'PFN_vkCmdBindIndexBuffer'
+     13 | VKFN(vkCmdBindIndexBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:48:1: note: expanded from here
+     48 | PFN_vkCmdBindIndexBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:14:1: error: unknown type name 'PFN_vkCmdBindPipeline'
+     14 | VKFN(vkCmdBindPipeline);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:50:1: note: expanded from here
+     50 | PFN_vkCmdBindPipeline
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:15:1: error: unknown type name 'PFN_vkCmdBindVertexBuffers'
+     15 | VKFN(vkCmdBindVertexBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:52:1: note: expanded from here
+     52 | PFN_vkCmdBindVertexBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:16:1: error: unknown type name 'PFN_vkCmdBlitImage'
+     16 | VKFN(vkCmdBlitImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:54:1: note: expanded from here
+     54 | PFN_vkCmdBlitImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:17:1: error: unknown type name 'PFN_vkCmdClearAttachments'
+     17 | VKFN(vkCmdClearAttachments);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:56:1: note: expanded from here
+     56 | PFN_vkCmdClearAttachments
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:18:1: error: unknown type name 'PFN_vkCmdClearColorImage'
+     18 | VKFN(vkCmdClearColorImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:58:1: note: expanded from here
+     58 | PFN_vkCmdClearColorImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:19:1: error: unknown type name 'PFN_vkCmdClearDepthStencilImage'
+     19 | VKFN(vkCmdClearDepthStencilImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:60:1: note: expanded from here
+     60 | PFN_vkCmdClearDepthStencilImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/adreno_driver.cpp:2:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:20:1: error: unknown type name 'PFN_vkCmdCopyBuffer'
+     20 | VKFN(vkCmdCopyBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:62:1: note: expanded from here
+     62 | PFN_vkCmdCopyBuffer
+        | ^
+  fatal error: too many errors emitted, stopping now [-ferror-limit=]
+  20 errors generated.
+  [10/270] Building CXX object CMakeFiles/emu.dir/vulkan_test_jni.cpp.o
+  FAILED: CMakeFiles/emu.dir/vulkan_test_jni.cpp.o 
+  C:\Users\kirby\AppData\Local\Android\Sdk\ndk\27.0.12077973\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/kirby/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Demu_EXPORTS -ID:/ax360e++/aX360e/app/src/main/cpp -ID:/ax360e++/aX360e/app/src/main/cpp/xenia -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/src -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fno-limit-debug-info  -fPIC -march=armv8-a -stdlib=libc++ -fPIC -fno-omit-frame-pointer -funwind-tables -MD -MT CMakeFiles/emu.dir/vulkan_test_jni.cpp.o -MF CMakeFiles\emu.dir\vulkan_test_jni.cpp.o.d -o CMakeFiles/emu.dir/vulkan_test_jni.cpp.o -c D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:2:1: error: unknown type name 'PFN_vkAcquireNextImageKHR'
+      2 | VKFN(vkAcquireNextImageKHR);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:123:1: note: expanded from here
+    123 | PFN_vkAcquireNextImageKHR
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:3:1: error: unknown type name 'PFN_vkAllocateCommandBuffers'
+      3 | VKFN(vkAllocateCommandBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:125:1: note: expanded from here
+    125 | PFN_vkAllocateCommandBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:4:1: error: unknown type name 'PFN_vkAllocateDescriptorSets'
+      4 | VKFN(vkAllocateDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:127:1: note: expanded from here
+    127 | PFN_vkAllocateDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:5:1: error: unknown type name 'PFN_vkAllocateMemory'
+      5 | VKFN(vkAllocateMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:129:1: note: expanded from here
+    129 | PFN_vkAllocateMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:6:1: error: unknown type name 'PFN_vkBeginCommandBuffer'
+      6 | VKFN(vkBeginCommandBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:131:1: note: expanded from here
+    131 | PFN_vkBeginCommandBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:7:1: error: unknown type name 'PFN_vkBindBufferMemory'
+      7 | VKFN(vkBindBufferMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:133:1: note: expanded from here
+    133 | PFN_vkBindBufferMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:8:1: error: unknown type name 'PFN_vkBindImageMemory'
+      8 | VKFN(vkBindImageMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:135:1: note: expanded from here
+    135 | PFN_vkBindImageMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:9:1: error: unknown type name 'PFN_vkCmdBeginConditionalRenderingEXT'
+      9 | VKFN(vkCmdBeginConditionalRenderingEXT);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:137:1: note: expanded from here
+    137 | PFN_vkCmdBeginConditionalRenderingEXT
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:10:1: error: unknown type name 'PFN_vkCmdBeginQuery'
+     10 | VKFN(vkCmdBeginQuery);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:139:1: note: expanded from here
+    139 | PFN_vkCmdBeginQuery
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:11:1: error: unknown type name 'PFN_vkCmdBeginRenderPass'
+     11 | VKFN(vkCmdBeginRenderPass);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:141:1: note: expanded from here
+    141 | PFN_vkCmdBeginRenderPass
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:12:1: error: unknown type name 'PFN_vkCmdBindDescriptorSets'
+     12 | VKFN(vkCmdBindDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:143:1: note: expanded from here
+    143 | PFN_vkCmdBindDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:13:1: error: unknown type name 'PFN_vkCmdBindIndexBuffer'
+     13 | VKFN(vkCmdBindIndexBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:145:1: note: expanded from here
+    145 | PFN_vkCmdBindIndexBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:14:1: error: unknown type name 'PFN_vkCmdBindPipeline'
+     14 | VKFN(vkCmdBindPipeline);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:147:1: note: expanded from here
+    147 | PFN_vkCmdBindPipeline
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:15:1: error: unknown type name 'PFN_vkCmdBindVertexBuffers'
+     15 | VKFN(vkCmdBindVertexBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:149:1: note: expanded from here
+    149 | PFN_vkCmdBindVertexBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:16:1: error: unknown type name 'PFN_vkCmdBlitImage'
+     16 | VKFN(vkCmdBlitImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:151:1: note: expanded from here
+    151 | PFN_vkCmdBlitImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:17:1: error: unknown type name 'PFN_vkCmdClearAttachments'
+     17 | VKFN(vkCmdClearAttachments);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:153:1: note: expanded from here
+    153 | PFN_vkCmdClearAttachments
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:18:1: error: unknown type name 'PFN_vkCmdClearColorImage'
+     18 | VKFN(vkCmdClearColorImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:155:1: note: expanded from here
+    155 | PFN_vkCmdClearColorImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:19:1: error: unknown type name 'PFN_vkCmdClearDepthStencilImage'
+     19 | VKFN(vkCmdClearDepthStencilImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:157:1: note: expanded from here
+    157 | PFN_vkCmdClearDepthStencilImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vulkan_test_jni.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:20:1: error: unknown type name 'PFN_vkCmdCopyBuffer'
+     20 | VKFN(vkCmdCopyBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:159:1: note: expanded from here
+    159 | PFN_vkCmdCopyBuffer
+        | ^
+  fatal error: too many errors emitted, stopping now [-ferror-limit=]
+  20 errors generated.
+  [11/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/exception_handler.cc.o
+  [12/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/arena.cc.o
+  [13/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/bit_map.cc.o
+  [14/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/debugging_posix.cc.o
+  [15/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/exception_handler_posix.cc.o
+  [16/270] Building CXX object CMakeFiles/xenia-apu-nop.dir/xenia/src/xenia/apu/nop/nop_audio_system.cc.o
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/nop/nop_audio_system.cc:13:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/nop/nop_audio_system.h:13:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/audio_system.h:17:
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/base/threading.h:61:25: warning: increment of object of volatile-qualified type 'volatile state_t_' (aka 'volatile unsigned long') is deprecated [-Wdeprecated-volatile]
+     61 |     auto signal_state = ++signal_state_;
+        |                         ^
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/nop/nop_audio_system.cc:107:22: warning: 'Initialize' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+    107 |                 bool Initialize() {
+        |                      ^
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/audio_driver.h:30:16: note: overridden virtual function is here
+     30 |   virtual bool Initialize() = 0;
+        |                ^
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/nop/nop_audio_system.cc:144:22: warning: 'Shutdown' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+    144 |                 void Shutdown() {
+        |                      ^
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/apu/audio_driver.h:31:16: note: overridden virtual function is here
+     31 |   virtual void Shutdown() = 0;
+        |                ^
+  3 warnings generated.
+  [17/270] Building CXX object CMakeFiles/xenia-base.dir/xenia/src/xenia/base/clock.cc.o
+  [18/270] Building CXX object CMakeFiles/emu.dir/emulator_ax360e.cpp.o
+  FAILED: CMakeFiles/emu.dir/emulator_ax360e.cpp.o 
+  C:\Users\kirby\AppData\Local\Android\Sdk\ndk\27.0.12077973\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/kirby/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Demu_EXPORTS -ID:/ax360e++/aX360e/app/src/main/cpp -ID:/ax360e++/aX360e/app/src/main/cpp/xenia -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/src -ID:/ax360e++/aX360e/app/src/main/cpp/xenia/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fno-limit-debug-info  -fPIC -march=armv8-a -stdlib=libc++ -fPIC -fno-omit-frame-pointer -funwind-tables -MD -MT CMakeFiles/emu.dir/emulator_ax360e.cpp.o -MF CMakeFiles\emu.dir\emulator_ax360e.cpp.o.d -o CMakeFiles/emu.dir/emulator_ax360e.cpp.o -c D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/app/emulator_window.h:16:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/emulator.h:22:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/kernel/kernel_state.h:20:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/cpu/backend/backend.h:17:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/cpu/thread_debug_info.h:16:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/cpu/thread.h:13:
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/base/threading.h:61:25: warning: increment of object of volatile-qualified type 'volatile state_t_' (aka 'volatile unsigned long') is deprecated [-Wdeprecated-volatile]
+     61 |     auto signal_state = ++signal_state_;
+        |                         ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:5:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/app/emulator_window.h:16:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/emulator.h:22:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/kernel/kernel_state.h:27:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/kernel/xam/achievement_manager.h:19:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/kernel/xam/xdbf/gpd_info.h:19:
+  D:/ax360e++/aX360e/app/src/main/cpp/xenia/src/xenia/kernel/xam/user_data.h:142:15: warning: enumeration values 'WSTRING', 'BINARY', and 'UNSET' not handled in switch [-Wswitch]
+    142 |       switch (get_type(id)) {
+        |               ^~~~~~~~~~~~
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:2:1: error: unknown type name 'PFN_vkAcquireNextImageKHR'
+      2 | VKFN(vkAcquireNextImageKHR);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:118:1: note: expanded from here
+    118 | PFN_vkAcquireNextImageKHR
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:3:1: error: unknown type name 'PFN_vkAllocateCommandBuffers'
+      3 | VKFN(vkAllocateCommandBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:120:1: note: expanded from here
+    120 | PFN_vkAllocateCommandBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:4:1: error: unknown type name 'PFN_vkAllocateDescriptorSets'
+      4 | VKFN(vkAllocateDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:122:1: note: expanded from here
+    122 | PFN_vkAllocateDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:5:1: error: unknown type name 'PFN_vkAllocateMemory'
+      5 | VKFN(vkAllocateMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:124:1: note: expanded from here
+    124 | PFN_vkAllocateMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:6:1: error: unknown type name 'PFN_vkBeginCommandBuffer'
+      6 | VKFN(vkBeginCommandBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:126:1: note: expanded from here
+    126 | PFN_vkBeginCommandBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:7:1: error: unknown type name 'PFN_vkBindBufferMemory'
+      7 | VKFN(vkBindBufferMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:128:1: note: expanded from here
+    128 | PFN_vkBindBufferMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:8:1: error: unknown type name 'PFN_vkBindImageMemory'
+      8 | VKFN(vkBindImageMemory);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:130:1: note: expanded from here
+    130 | PFN_vkBindImageMemory
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:9:1: error: unknown type name 'PFN_vkCmdBeginConditionalRenderingEXT'
+      9 | VKFN(vkCmdBeginConditionalRenderingEXT);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:132:1: note: expanded from here
+    132 | PFN_vkCmdBeginConditionalRenderingEXT
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:10:1: error: unknown type name 'PFN_vkCmdBeginQuery'
+     10 | VKFN(vkCmdBeginQuery);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:134:1: note: expanded from here
+    134 | PFN_vkCmdBeginQuery
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:11:1: error: unknown type name 'PFN_vkCmdBeginRenderPass'
+     11 | VKFN(vkCmdBeginRenderPass);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:136:1: note: expanded from here
+    136 | PFN_vkCmdBeginRenderPass
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:12:1: error: unknown type name 'PFN_vkCmdBindDescriptorSets'
+     12 | VKFN(vkCmdBindDescriptorSets);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:138:1: note: expanded from here
+    138 | PFN_vkCmdBindDescriptorSets
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:13:1: error: unknown type name 'PFN_vkCmdBindIndexBuffer'
+     13 | VKFN(vkCmdBindIndexBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:140:1: note: expanded from here
+    140 | PFN_vkCmdBindIndexBuffer
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:14:1: error: unknown type name 'PFN_vkCmdBindPipeline'
+     14 | VKFN(vkCmdBindPipeline);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:142:1: note: expanded from here
+    142 | PFN_vkCmdBindPipeline
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:15:1: error: unknown type name 'PFN_vkCmdBindVertexBuffers'
+     15 | VKFN(vkCmdBindVertexBuffers);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:2:1: note: expanded from here
+      2 | PFN_vkCmdBindVertexBuffers
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:16:1: error: unknown type name 'PFN_vkCmdBlitImage'
+     16 | VKFN(vkCmdBlitImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:4:1: note: expanded from here
+      4 | PFN_vkCmdBlitImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:17:1: error: unknown type name 'PFN_vkCmdClearAttachments'
+     17 | VKFN(vkCmdClearAttachments);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:6:1: note: expanded from here
+      6 | PFN_vkCmdClearAttachments
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:18:1: error: unknown type name 'PFN_vkCmdClearColorImage'
+     18 | VKFN(vkCmdClearColorImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:8:1: note: expanded from here
+      8 | PFN_vkCmdClearColorImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:19:1: error: unknown type name 'PFN_vkCmdClearDepthStencilImage'
+     19 | VKFN(vkCmdClearDepthStencilImage);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:10:1: note: expanded from here
+     10 | PFN_vkCmdClearDepthStencilImage
+        | ^
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/emulator_ax360e.cpp:18:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vkutil.h:9:
+  In file included from D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:8:
+  D:/ax360e++/aX360e/app/src/main/cpp/vksym.h:20:1: error: unknown type name 'PFN_vkCmdCopyBuffer'
+     20 | VKFN(vkCmdCopyBuffer);
+        | ^
+  D:/ax360e++/aX360e/app/src/main/cpp/vk_symbols.h:7:27: note: expanded from macro 'VKFN'
+      7 | #define VKFN(func) extern PFN_##func func##_
+        |                           ^
+  <scratch space>:12:1: note: expanded from here
+     12 | PFN_vkCmdCopyBuffer
+        | ^
+  fatal error: too many errors emitted, stopping now [-ferror-limit=]
+  2 warnings and 20 errors generated.
+  ninja: build stopped: subcommand failed.
+  
+  C++ build system [build] failed while executing:
+      @echo off
+      "C:\\Users\\kirby\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe" ^
+        -C ^
+        "D:\\ax360e++\\aX360e\\app\\.cxx\\Debug\\6kx57t1q\\arm64-v8a" ^
+        emu ^
+        hardware_ProcessorInfo
+    from D:\ax360e++\aX360e\app
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 12s

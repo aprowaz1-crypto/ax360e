@@ -10,11 +10,16 @@
 
 #include <cstring>
 
+#include <android/log.h>
+
+#include "ax360e_perf_log.h"
 #include "xenia/apu/apu_flags.h"
 #include "xenia/apu/conversion.h"
 #include "xenia/base/assert.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/profiling.h"
+
+static ax360e::perf::AudioHealthTracker g_audio_health;
 
 namespace xe {
 namespace apu {
@@ -56,9 +61,26 @@ bool AAudioAudioDriver::Initialize() {
     return false;
   }
 
+  // Log actual negotiated stream parameters
+  __android_log_print(ANDROID_LOG_INFO, "ax360e_audio",
+      "AAudio stream opened: sampleRate=%d channels=%d format=%d "
+      "framesPerBurst=%d bufferCapacity=%d bufferSize=%d sharingMode=%d performanceMode=%d",
+      AAudioStream_getSampleRate(stream_),
+      AAudioStream_getChannelCount(stream_),
+      AAudioStream_getFormat(stream_),
+      AAudioStream_getFramesPerBurst(stream_),
+      AAudioStream_getBufferCapacityInFrames(stream_),
+      AAudioStream_getBufferSizeInFrames(stream_),
+      AAudioStream_getSharingMode(stream_),
+      AAudioStream_getPerformanceMode(stream_));
+
+  // Set buffer size to 2x burst size for stability
+  int32_t burst = AAudioStream_getFramesPerBurst(stream_);
+  AAudioStream_setBufferSizeInFrames(stream_, burst * 2);
+
   {
     std::unique_lock<std::mutex> guard(frames_mutex_);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 8; i++) {
       float* buffer = new float[x360_frame_samples_];
       frames_unused_.push(buffer);
     }
@@ -88,7 +110,10 @@ void AAudioAudioDriver::Resume() {
 }
 
 void AAudioAudioDriver::SetVolume(float volume) {
-    //FIXME
+  float clamped = volume < 0.0f ? 0.0f : volume;
+  volume_.store(clamped, std::memory_order_relaxed);
+  __android_log_print(ANDROID_LOG_INFO, "ax360e_audio",
+      "SetVolume called: %.4f (clamped: %.4f)", volume, clamped);
 }
 
 aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
@@ -102,9 +127,13 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
   float* output_buffer = reinterpret_cast<float*>(audioData);
   const int32_t samples_count = numFrames * 2;
 
+  g_audio_health.OnCallbackStart();
+
   std::unique_lock<std::mutex> guard(driver->frames_mutex_);
+  g_audio_health.RecordQueueDepth(static_cast<uint32_t>(driver->frames_queued_.size()));
 
   if (driver->frames_queued_.empty()) {
+    g_audio_health.RecordUnderrun();
     std::memset(output_buffer, 0, samples_count * sizeof(float));
   } else {
     auto buffer = driver->frames_queued_.front();
@@ -115,6 +144,32 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
     } else {
         conversion::sequential_6_BE_to_interleaved_2_LE(
                 output_buffer, buffer, channel_samples_);
+        // Apply volume and output gain (AAudio exclusive mode has no system mixer)
+        constexpr float kOutputGain = 6.0f;
+        float vol = driver->volume_.load(std::memory_order_relaxed);
+        float gain = vol * kOutputGain;
+        for (int32_t i = 0; i < samples_count; i++) {
+          float s = output_buffer[i] * gain;
+          // Clamp to [-1.0, 1.0] to avoid clipping distortion
+          output_buffer[i] = s > 1.0f ? 1.0f : (s < -1.0f ? -1.0f : s);
+        }
+    }
+
+    // Diagnostic: log sample values every ~2 seconds (~375 callbacks)
+    static uint32_t diag_counter = 0;
+    if (++diag_counter % 375 == 1) {
+      // Check input (raw BE from guest) and output (converted LE stereo)
+      float raw0 = buffer[0], raw1 = buffer[1], raw2 = buffer[256], raw3 = buffer[257];
+      float out0 = output_buffer[0], out1 = output_buffer[1], out2 = output_buffer[2], out3 = output_buffer[3];
+      float max_out = 0.0f;
+      for (int i = 0; i < 512; i++) {
+        float a = output_buffer[i] < 0 ? -output_buffer[i] : output_buffer[i];
+        if (a > max_out) max_out = a;
+      }
+      __android_log_print(ANDROID_LOG_INFO, "ax360e_audio_diag",
+          "raw[FL0]=%.6f raw[FL1]=%.6f raw[FR0]=%.6f raw[FR1]=%.6f | "
+          "out[L0]=%.6f out[R0]=%.6f out[L1]=%.6f out[R1]=%.6f | max_abs=%.6f mute=%d",
+          raw0, raw1, raw2, raw3, out0, out1, out2, out3, max_out, (int)cvars::mute);
     }
 
     driver->frames_unused_.push(buffer);
@@ -123,6 +178,7 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
       assert_true(ret);
   }
 
+  g_audio_health.OnCallbackEnd();
   return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
@@ -131,6 +187,7 @@ void AAudioAudioDriver::AudioErrorCallback(
     void* userdata,
     aaudio_result_t error) {
   XELOGE("AAudio stream error: {}", error);
+  g_audio_health.RecordStreamError(static_cast<int32_t>(error));
 }
 
 void AAudioAudioDriver::SubmitFrame(float* samples) {
@@ -140,6 +197,7 @@ void AAudioAudioDriver::SubmitFrame(float* samples) {
   {
     std::unique_lock<std::mutex> guard(frames_mutex_);
     if (frames_unused_.empty()) {
+      g_audio_health.RecordDynamicAlloc();
       output_frame = new float[x360_frame_samples_];
     } else {
       output_frame = frames_unused_.top();

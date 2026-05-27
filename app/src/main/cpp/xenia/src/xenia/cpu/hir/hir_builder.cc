@@ -1281,7 +1281,9 @@ void HIRBuilder::CacheControl(Value* address, size_t cache_line_size,
   i->src3.value = NULL;
 }
 
-void HIRBuilder::MemoryBarrier() { AppendInstr(OPCODE_MEMORY_BARRIER_info, 0); }
+void HIRBuilder::MemoryBarrier(MemoryBarrierType type) {
+  AppendInstr(OPCODE_MEMORY_BARRIER_info, static_cast<uint32_t>(type));
+}
 
 void HIRBuilder::SetRoundingMode(Value* value) {
   ASSERT_INTEGER_TYPE(value);

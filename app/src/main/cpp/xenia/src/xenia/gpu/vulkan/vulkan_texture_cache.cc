@@ -13,6 +13,10 @@
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
 #include "xenia/base/profiling.h"
+
+#if XE_PLATFORM_AX360E
+#include "ax360e_perf_log.h"
+#endif
 #include "xenia/gpu/gpu_flags.h"
 #include "xenia/gpu/texture_info.h"
 #include "xenia/gpu/texture_util.h"
@@ -829,11 +833,21 @@ VkSampler VulkanTextureCache::UseSampler(SamplerParameters parameters,
     sampler_create_info.maxLod = VK_LOD_CLAMP_NONE;
   }
   // TODO(Triang3l): Custom border colors for CrYCb / YCrCb.
+  // k_ABGR_Black (0): ABGR=(0,0,0,0), transparent black. R=0 means depth
+  // border = 0.0 (near plane) when used with shadow/depth textures - games
+  // that want "not in shadow" at the frustum edge should use k_ABGR_White.
   switch (parameters.border_color) {
     case xenos::BorderColor::k_ABGR_White:
       sampler_create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
       break;
+    case xenos::BorderColor::k_ABGR_Black:
+      // A=0, BGR=0 -> transparent black is the correct representation.
+      // For depth textures this gives border depth=0.0 (near plane).
+      sampler_create_info.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+      break;
     default:
+      // k_ACBYCR_Black and k_AYCBCR_Black: YCbCr black - no direct Vulkan
+      // equivalent; transparent black is closest for luma/chroma channels.
       sampler_create_info.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
       break;
   }
@@ -1854,19 +1868,49 @@ bool VulkanTextureCache::Initialize() {
   // decompressed.
   // TODO(Triang3l): S3TC -> 5551 or 4444 as an option.
   // TODO(Triang3l): S3TC -> ETC2 / EAC (a huge research topic).
+  // Whether to force software (compute shader) BCn decode regardless of what
+  // the driver reports. Needed for Turnip builds that advertise BCn hardware
+  // sampling but decode incorrectly, producing black or corrupted textures.
+  //
+  // Auto-detect: On Turnip/Adreno, BCn hardware support is often advertised
+  // but produces corrupt output (black textures, wrong colors). Force software
+  // decode on Turnip unless the user explicitly set the cvar to false.
+  bool force_s3tc_sw = cvars::force_s3tc_software_decode;
+  if (!force_s3tc_sw && device_properties.isTurnipDriver) {
+    // Turnip commonly misreports BCn support - force software decode for
+    // correct rendering on Adreno GPUs. Per-format checks below will still
+    // fall back to software if hardware doesn't even claim support.
+    force_s3tc_sw = true;
+    XELOGW(
+        "VulkanTextureCache: Turnip driver detected - auto-enabling software "
+        "BCn decode to avoid black/corrupt textures. Set "
+        "force_s3tc_software_decode=false to override.");
+  }
+  if (force_s3tc_sw) {
+    XELOGW(
+        "VulkanTextureCache: force_s3tc_software_decode is ON - all BCn "
+        "formats will use compute shader decode regardless of driver support.");
+  }
+
   HostFormatPair& host_format_dxt1 =
       host_formats_[uint32_t(xenos::TextureFormat::k_DXT1)];
   assert_true(host_format_dxt1.format_unsigned.format ==
               VK_FORMAT_BC1_RGBA_UNORM_BLOCK);
   ifn.vkGetPhysicalDeviceFormatProperties(
       physical_device, VK_FORMAT_BC1_RGBA_UNORM_BLOCK, &format_properties);
-  if ((format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
-      kLinearFilterFeatures) {
+  if (force_s3tc_sw ||
+      (format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
+          kLinearFilterFeatures) {
     host_format_dxt1.format_unsigned.load_shader = kLoadShaderIndexDXT1ToRGBA8;
     host_format_dxt1.format_unsigned.format = VK_FORMAT_R8G8B8A8_UNORM;
     host_format_dxt1.format_unsigned.block_compressed = false;
     host_formats_[uint32_t(xenos::TextureFormat::k_DXT1_AS_16_16_16_16)] =
         host_format_dxt1;
+    XELOGI("VulkanTextureCache: DXT1 (BC1) -> software decode (RGBA8){}",
+           force_s3tc_sw ? " [forced]"
+                         : " [driver lacks optimalTiling filter support]");
+  } else {
+    XELOGI("VulkanTextureCache: DXT1 (BC1) -> native VK_FORMAT_BC1_RGBA_UNORM_BLOCK");
   }
   HostFormatPair& host_format_dxt2_3 =
       host_formats_[uint32_t(xenos::TextureFormat::k_DXT2_3)];
@@ -1874,14 +1918,20 @@ bool VulkanTextureCache::Initialize() {
               VK_FORMAT_BC2_UNORM_BLOCK);
   ifn.vkGetPhysicalDeviceFormatProperties(
       physical_device, VK_FORMAT_BC2_UNORM_BLOCK, &format_properties);
-  if ((format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
-      kLinearFilterFeatures) {
+  if (force_s3tc_sw ||
+      (format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
+          kLinearFilterFeatures) {
     host_format_dxt2_3.format_unsigned.load_shader =
         kLoadShaderIndexDXT3ToRGBA8;
     host_format_dxt2_3.format_unsigned.format = VK_FORMAT_R8G8B8A8_UNORM;
     host_format_dxt2_3.format_unsigned.block_compressed = false;
     host_formats_[uint32_t(xenos::TextureFormat::k_DXT2_3_AS_16_16_16_16)] =
         host_format_dxt2_3;
+    XELOGI("VulkanTextureCache: DXT2/3 (BC2) -> software decode (RGBA8){}",
+           force_s3tc_sw ? " [forced]"
+                         : " [driver lacks optimalTiling filter support]");
+  } else {
+    XELOGI("VulkanTextureCache: DXT2/3 (BC2) -> native VK_FORMAT_BC2_UNORM_BLOCK");
   }
   HostFormatPair& host_format_dxt4_5 =
       host_formats_[uint32_t(xenos::TextureFormat::k_DXT4_5)];
@@ -1889,14 +1939,20 @@ bool VulkanTextureCache::Initialize() {
               VK_FORMAT_BC3_UNORM_BLOCK);
   ifn.vkGetPhysicalDeviceFormatProperties(
       physical_device, VK_FORMAT_BC3_UNORM_BLOCK, &format_properties);
-  if ((format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
-      kLinearFilterFeatures) {
+  if (force_s3tc_sw ||
+      (format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
+          kLinearFilterFeatures) {
     host_format_dxt4_5.format_unsigned.load_shader =
         kLoadShaderIndexDXT5ToRGBA8;
     host_format_dxt4_5.format_unsigned.format = VK_FORMAT_R8G8B8A8_UNORM;
     host_format_dxt4_5.format_unsigned.block_compressed = false;
     host_formats_[uint32_t(xenos::TextureFormat::k_DXT4_5_AS_16_16_16_16)] =
         host_format_dxt4_5;
+    XELOGI("VulkanTextureCache: DXT4/5 (BC3) -> software decode (RGBA8){}",
+           force_s3tc_sw ? " [forced]"
+                         : " [driver lacks optimalTiling filter support]");
+  } else {
+    XELOGI("VulkanTextureCache: DXT4/5 (BC3) -> native VK_FORMAT_BC3_UNORM_BLOCK");
   }
   HostFormatPair& host_format_dxn =
       host_formats_[uint32_t(xenos::TextureFormat::k_DXN)];
@@ -1904,11 +1960,22 @@ bool VulkanTextureCache::Initialize() {
               VK_FORMAT_BC5_UNORM_BLOCK);
   ifn.vkGetPhysicalDeviceFormatProperties(
       physical_device, VK_FORMAT_BC5_UNORM_BLOCK, &format_properties);
-  if ((format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
-      kLinearFilterFeatures) {
+  if (force_s3tc_sw ||
+      (format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
+          kLinearFilterFeatures) {
     host_format_dxn.format_unsigned.load_shader = kLoadShaderIndexDXNToRG8;
     host_format_dxn.format_unsigned.format = VK_FORMAT_R8G8_UNORM;
     host_format_dxn.format_unsigned.block_compressed = false;
+    XELOGI(
+        "VulkanTextureCache: DXN (BC5, normal maps) -> software decode (RG8){}"
+        " - if normal-mapped models appear black/unlit, check this path",
+        force_s3tc_sw ? " [forced]"
+                      : " [driver lacks optimalTiling filter support]");
+  } else {
+    XELOGI(
+        "VulkanTextureCache: DXN (BC5, normal maps) -> native "
+        "VK_FORMAT_BC5_UNORM_BLOCK - if normal-mapped models appear black, "
+        "try force_s3tc_software_decode=true");
   }
   HostFormatPair& host_format_dxt5a =
       host_formats_[uint32_t(xenos::TextureFormat::k_DXT5A)];
@@ -1916,11 +1983,17 @@ bool VulkanTextureCache::Initialize() {
               VK_FORMAT_BC4_UNORM_BLOCK);
   ifn.vkGetPhysicalDeviceFormatProperties(
       physical_device, VK_FORMAT_BC4_UNORM_BLOCK, &format_properties);
-  if ((format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
-      kLinearFilterFeatures) {
+  if (force_s3tc_sw ||
+      (format_properties.optimalTilingFeatures & kLinearFilterFeatures) !=
+          kLinearFilterFeatures) {
     host_format_dxt5a.format_unsigned.load_shader = kLoadShaderIndexDXT5AToR8;
     host_format_dxt5a.format_unsigned.format = VK_FORMAT_R8_UNORM;
     host_format_dxt5a.format_unsigned.block_compressed = false;
+    XELOGI("VulkanTextureCache: DXT5A (BC4) -> software decode (R8){}",
+           force_s3tc_sw ? " [forced]"
+                         : " [driver lacks optimalTiling filter support]");
+  } else {
+    XELOGI("VulkanTextureCache: DXT5A (BC4) -> native VK_FORMAT_BC4_UNORM_BLOCK");
   }
   // k_16, k_16_16, k_16_16_16_16 - UNORM / SNORM are optional, fall back to
   // SFLOAT, which is mandatory and is always filterable (the guest 16-bit
@@ -2670,6 +2743,46 @@ bool VulkanTextureCache::Initialize() {
   } else {
     max_anisotropy_ = xenos::AnisoFilter::kDisabled;
   }
+
+#if XE_PLATFORM_AX360E
+  // Dump Turnip/GPU diagnostics for debugging texture and driver issues.
+  {
+    VkFormatProperties bc1_props, bc2_props, bc3_props, bc4_props, bc5_props;
+    ifn.vkGetPhysicalDeviceFormatProperties(
+        physical_device, VK_FORMAT_BC1_RGBA_UNORM_BLOCK, &bc1_props);
+    ifn.vkGetPhysicalDeviceFormatProperties(
+        physical_device, VK_FORMAT_BC2_UNORM_BLOCK, &bc2_props);
+    ifn.vkGetPhysicalDeviceFormatProperties(
+        physical_device, VK_FORMAT_BC3_UNORM_BLOCK, &bc3_props);
+    ifn.vkGetPhysicalDeviceFormatProperties(
+        physical_device, VK_FORMAT_BC4_UNORM_BLOCK, &bc4_props);
+    ifn.vkGetPhysicalDeviceFormatProperties(
+        physical_device, VK_FORMAT_BC5_UNORM_BLOCK, &bc5_props);
+    constexpr VkFormatFeatureFlags kBCNeeded =
+        VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+    ax360e::perf::LogTurnipDiagnostics(
+        device_properties.deviceName,
+        device_properties.vendorID,
+        device_properties.deviceID,
+        device_properties.driverVersion,
+        device_properties.apiVersion,
+        (bc1_props.optimalTilingFeatures & kBCNeeded) == kBCNeeded,
+        (bc2_props.optimalTilingFeatures & kBCNeeded) == kBCNeeded,
+        (bc3_props.optimalTilingFeatures & kBCNeeded) == kBCNeeded,
+        (bc4_props.optimalTilingFeatures & kBCNeeded) == kBCNeeded,
+        (bc5_props.optimalTilingFeatures & kBCNeeded) == kBCNeeded,
+        device_properties.fragmentShaderSampleInterlock ||
+            device_properties.fragmentShaderPixelInterlock,
+        device_properties.shaderTileImageColorReadAccess,
+        device_properties.nonSeamlessCubeMap);
+
+    XELOGI("TextureCache: max_samplers={}  anisotropy={}  turnip={}",
+           sampler_max_count_,
+           static_cast<uint32_t>(max_anisotropy_),
+           device_properties.isTurnipDriver ? "yes" : "no");
+  }
+#endif
 
   return true;
 }

@@ -19,6 +19,10 @@
 #include "xenia/base/profiling.h"
 #include "xenia/base/ring_buffer.h"
 
+#if XE_PLATFORM_ANDROID
+#include <android/log.h>
+#endif
+
 extern "C" {
 #if XE_COMPILER_MSVC
 #pragma warning(push)
@@ -129,6 +133,22 @@ bool XmaContextOld::Work() {
     XMA_CONTEXT_DATA data(context_ptr);
     Decode(&data);
     data.Store(context_ptr);
+
+#if XE_PLATFORM_ANDROID
+    static uint32_t work_count = 0;
+    if (++work_count % 500 == 1) {
+      __android_log_print(ANDROID_LOG_INFO, "ax360e_xma",
+          "XMA Work() called %u times (ctx %d) obv=%d in0v=%d in1v=%d "
+          "rd_off=%u wr_off=%u blk=%u",
+          work_count, id(),
+          (int)data.output_buffer_valid,
+          (int)data.input_buffer_0_valid, (int)data.input_buffer_1_valid,
+          (uint32_t)data.output_buffer_read_offset,
+          (uint32_t)data.output_buffer_write_offset,
+          (uint32_t)data.output_buffer_block_count);
+    }
+#endif
+
     return true;
   }
 }
@@ -332,11 +352,32 @@ void XmaContextOld::Decode(XMA_CONTEXT_DATA* data) {
   // Check the output buffer - we cannot decode anything else if it's
   // unavailable.
   if (!data->output_buffer_valid) {
+#if XE_PLATFORM_ANDROID
+    static uint32_t obv_stall_count = 0;
+    if (++obv_stall_count % 500 == 1) {
+      __android_log_print(ANDROID_LOG_WARN, "ax360e_xma",
+          "XMA ctx %d: output_buffer_valid=0 STALL (count=%u) "
+          "in0_valid=%d in1_valid=%d rd_off=%u wr_off=%u blk_cnt=%u",
+          id(), obv_stall_count,
+          (int)data->input_buffer_0_valid, (int)data->input_buffer_1_valid,
+          (uint32_t)data->output_buffer_read_offset,
+          (uint32_t)data->output_buffer_write_offset,
+          (uint32_t)data->output_buffer_block_count);
+    }
+#endif
     return;
   }
 
   // No available data.
   if (!data->input_buffer_0_valid && !data->input_buffer_1_valid) {
+#if XE_PLATFORM_ANDROID
+    static uint32_t no_input_count = 0;
+    if (++no_input_count % 500 == 1) {
+      __android_log_print(ANDROID_LOG_WARN, "ax360e_xma",
+          "XMA ctx %d: no valid input buffers (count=%u)",
+          id(), no_input_count);
+    }
+#endif
     return;
   }
 
@@ -811,6 +852,11 @@ void XmaContextOld::Decode(XMA_CONTEXT_DATA* data) {
               is_stream_done_ = true;
             }
             if (output_rb.write_offset() == output_rb.read_offset()) {
+#if XE_PLATFORM_ANDROID
+              __android_log_print(ANDROID_LOG_WARN, "ax360e_xma",
+                  "XMA ctx %d: obv->0 at split-frame skip (rd=%u wr=%u)",
+                  id(), (uint32_t)output_rb.read_offset(), (uint32_t)output_rb.write_offset());
+#endif
               data->output_buffer_valid = 0;
             }
           }
@@ -840,6 +886,11 @@ void XmaContextOld::Decode(XMA_CONTEXT_DATA* data) {
               is_stream_done_ = true;
             }
             if (output_rb.write_offset() == output_rb.read_offset()) {
+#if XE_PLATFORM_ANDROID
+              __android_log_print(ANDROID_LOG_WARN, "ax360e_xma",
+                  "XMA ctx %d: obv->0 at packet-skip (rd=%u wr=%u)",
+                  id(), (uint32_t)output_rb.read_offset(), (uint32_t)output_rb.write_offset());
+#endif
               data->output_buffer_valid = 0;
             }
           }
@@ -891,6 +942,13 @@ void XmaContextOld::Decode(XMA_CONTEXT_DATA* data) {
   // The game will kick us again with a new output buffer later.
   // It's important that we only invalidate this if we actually wrote to it!!
   if (output_rb.write_offset() == output_rb.read_offset()) {
+#if XE_PLATFORM_ANDROID
+    __android_log_print(ANDROID_LOG_WARN, "ax360e_xma",
+        "XMA ctx %d: output_buffer_valid -> 0 (ringbuf full/empty, "
+        "rd=%u wr=%u cap=%u)",
+        id(), (uint32_t)output_read_offset, (uint32_t)output_write_offset,
+        (uint32_t)output_capacity);
+#endif
     data->output_buffer_valid = 0;
   }
 }

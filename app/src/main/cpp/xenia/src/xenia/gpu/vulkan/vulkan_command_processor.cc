@@ -2311,9 +2311,9 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
     // TODO(Triang3l): Tessellation, geometry-type-specific vertex shader,
     // vertex shader as compute.
     if (primitive_processing_result.host_vertex_shader_type !=
-            Shader::HostVertexShaderType::kVertex &&
-        primitive_processing_result.host_vertex_shader_type !=
-            Shader::HostVertexShaderType::kPointListAsTriangleStrip) {
+                   Shader::HostVertexShaderType::kVertex &&
+               primitive_processing_result.host_vertex_shader_type !=
+                   Shader::HostVertexShaderType::kPointListAsTriangleStrip) {
       XELOGE("IssueDraw: unsupported host_vertex_shader_type {}",
              uint32_t(primitive_processing_result.host_vertex_shader_type));
       return false;

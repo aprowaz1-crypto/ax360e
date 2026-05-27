@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "xenia/base/filesystem.h"
@@ -136,6 +137,8 @@ class Entry {
  protected:
   Entry(Device* device, Entry* parent, const std::string_view path);
 
+  void MarkChildLookupDirty();
+
   virtual std::unique_ptr<Entry> CreateEntryInternal(
       const std::string_view name, uint32_t attributes) {
     return nullptr;
@@ -157,6 +160,8 @@ class Entry {
   uint64_t write_timestamp_;
   bool delete_on_close_;
   std::vector<std::unique_ptr<Entry>> children_;
+  std::unordered_map<std::string, Entry*> child_lookup_;
+  bool child_lookup_dirty_ = true;
 };
 
 }  // namespace vfs

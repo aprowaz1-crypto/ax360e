@@ -298,11 +298,16 @@ bool A64Emitter::Emit(HIRBuilder* builder, EmitFunctionInfo& func_info) {
         }
       const Instr* new_tail = instr;
       if (!SelectSequence(this, instr, &new_tail)) {
-        // No sequence found!
-        // NOTE: If you encounter this after adding a new instruction, do a full
-        // rebuild!
-        assert_always();
-        XELOGE("Unable to process HIR opcode {}", instr->opcode->name);
+        // No sequence found! Use the centralized unhandled system.
+        ReportUnhandledA64Opcode(this, instr, "SelectSequence");
+        EmitStructuredFallback(*this, instr);
+
+        if (cvars::a64_accuracy_debug) {
+          XELOGE("A64 Accuracy Debug: Unhandled HIR opcode surfaced via structured fallback + trap.");
+          UnimplementedInstr(instr);  // will BRK in debug mode
+        }
+        // In normal mode we continue (with zeroed dest) instead of hard crashing the guest.
+        // Stop this block to avoid cascading bad codegen.
         break;
       }
       instr = new_tail;
@@ -433,9 +438,23 @@ void A64Emitter::Trap(uint16_t trap_type) {
 }
 
 void A64Emitter::UnimplementedInstr(const hir::Instr* i) {
-  // TODO(benvanik): notify debugger.
+  // This is now primarily the "loud" path used in accuracy_debug mode.
+  // Normal operation prefers ReportUnhandledA64Opcode + EmitStructuredFallback.
+  const char* op_name = i && i->opcode ? i->opcode->name : "<unknown>";
+  XELOGE("A64: Emitting hard UNIMPLEMENTED/TRAP (accuracy_debug path) for HIR instr: {}", op_name);
+
+  if (cvars::a64_accuracy_debug) {
+    XELOGE("A64 Accuracy Debug: Conservative path hit. Guest will see SIGILL/BRK. "
+           "Use logcat + recent unhandled report for diagnosis.");
+  }
+
+  // Hard trap only in accuracy/debug mode. In normal runs the structured
+  // fallback above already gave us a chance to continue.
   BRK(0xF000);
-  assert_always();
+
+  if (cvars::a64_accuracy_debug) {
+    assert_always("A64 unhandled instr in accuracy debug mode");
+  }
 }
 
 // This is used by the A64ThunkEmitter's ResolveFunctionThunk.

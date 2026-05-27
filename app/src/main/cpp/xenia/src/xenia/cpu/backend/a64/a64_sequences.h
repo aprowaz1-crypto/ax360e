@@ -43,6 +43,28 @@ static bool Register() {
 bool SelectSequence(A64Emitter* e, const hir::Instr* i,
                     const hir::Instr** new_tail);
 
+// ============================================================================
+// Centralized Unhandled Instruction Logging + Structured Fallback System
+// ============================================================================
+// Provides rate-limited, device-debug friendly logging for rare/unimplemented
+// HIR opcodes that hit the A64 backend. Replaces scattered XELOGE + assert paths.
+// 
+// - Rate limited (first hit + exponential backoff) to avoid log spam on Android.
+// - Structured fallbacks: attempt to zero dest regs (safe degradation) instead
+//   of immediate hard BRK/SIGILL in non-debug builds.
+// - Can be extended to expose stats to Java side via JNI.
+//
+// Call ReportUnhandledA64Opcode from SelectSequence failure paths and any
+// sequence that hits a truly unhandled sub-case.
+// ============================================================================
+
+void ReportUnhandledA64Opcode(A64Emitter* e, const hir::Instr* instr,
+                              const char* context = "sequence");
+
+// Emits a best-effort safe fallback (zero dest if present, distinctive markers).
+// Never crashes the translator; used instead of (or before) hard traps.
+void EmitStructuredFallback(A64Emitter& e, const hir::Instr* instr);
+
 }  // namespace a64
 }  // namespace backend
 }  // namespace cpu

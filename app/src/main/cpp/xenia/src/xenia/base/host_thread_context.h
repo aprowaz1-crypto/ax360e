@@ -206,6 +206,10 @@ class HostThreadContext {
   uint32_t fpsr;
   uint32_t fpcr;
   vec128_t v[32];
+  // ESR (Exception Syndrome Register) captured from signal context on AArch64.
+  // Useful for guest ESR/FSR/DSISR synthesis for page faults, alignment,
+  // and FP exceptions on Android/POSIX. 0 if unavailable (common on older NDK).
+  uint32_t esr;
 #endif  // XE_ARCH
 
   static const char* GetRegisterName(HostRegister reg);

@@ -19,7 +19,7 @@
 #if XE_ARCH_AMD64
 #define XE_CLOCK_RAW_AVAILABLE 1
 #elif XE_ARCH_ARM64
-//#define XE_CLOCK_RAW_AVAILABLE 1
+#define XE_CLOCK_RAW_AVAILABLE 1
 #endif
 
 DECLARE_bool(clock_no_scaling);
@@ -87,9 +87,12 @@ class Clock {
   // Scales a time duration represented as a timeval, from guest time.
   static void ScaleGuestDurationTimeval(int32_t* tv_sec, int32_t* tv_usec);
 
-        static uint64_t QueryHostInterruptTime();
+  static uint64_t QueryHostInterruptTime();
+  static uint64_t QueryGuestInterruptTime();
 
-        static uint64_t QueryGuestInterruptTime();
+  // Returns pointer to the internal last guest tick count for advanced
+  // inline LOAD_CLOCK lowering / shared memory clock (e.g. a64 backend).
+  static uint64_t* GetGuestTickCountPointer();
 };
 
 }  // namespace xe

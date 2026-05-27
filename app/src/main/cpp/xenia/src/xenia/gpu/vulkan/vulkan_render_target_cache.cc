@@ -213,8 +213,21 @@ bool VulkanRenderTargetCache::Initialize(uint32_t shared_memory_binding_count) {
 
   if (cvars::render_target_path_vulkan == "fsi") {
     path_ = Path::kPixelShaderInterlock;
-  } else {
+  } else if (cvars::render_target_path_vulkan == "fbo") {
     path_ = Path::kHostRenderTargets;
+  } else {
+    // Auto-select: prefer FSI on Turnip with tile image support for better
+    // accuracy, otherwise use host render targets for performance.
+    if (vulkan_device->properties().isTurnipDriver &&
+        vulkan_device->properties().shaderTileImageColorReadAccess &&
+        device_properties.fragmentShaderSampleInterlock) {
+      path_ = Path::kPixelShaderInterlock;
+      XELOGI(
+          "VulkanRenderTargetCache: Auto-selected FSI path on Turnip with "
+          "tile image support for maximum accuracy");
+    } else {
+      path_ = Path::kHostRenderTargets;
+    }
   }
   // Fragment shader interlock is a feature implemented by pretty advanced GPUs,
   // closer to Direct3D 11 / OpenGL ES 3.2 level mainly, not Direct3D 10 /

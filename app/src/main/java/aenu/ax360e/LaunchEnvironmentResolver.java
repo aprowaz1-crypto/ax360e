@@ -142,11 +142,35 @@ public class LaunchEnvironmentResolver {
     }
 
     /**
+     * Apply only the global (non-per-game) Turnip environment variables.
+     * Used early during Application startup before the emulator native library is loaded.
+     * This is intentionally limited — full per-game resolution happens via resolveAndApply().
+     */
+    public void applyGlobalTurnipEnvironmentOnly() {
+        if (!CustomDriverUtils.isDriverInstalled(context)) {
+            return;
+        }
+
+        TurnipEnvManager turnipManager = new TurnipEnvManager(context);
+        List<TurnipEnvManager.EnvVar> envVars = turnipManager.buildEnvironmentVariables();
+
+        for (TurnipEnvManager.EnvVar envVar : envVars) {
+            try {
+                Os.setenv(envVar.name, envVar.value, true);
+                Log.d(TAG, "Early global Turnip env: " + envVar.name + "=" + envVar.value);
+            } catch (ErrnoException e) {
+                Log.e(TAG, "Failed to set early global " + envVar.name, e);
+            }
+        }
+    }
+
+    /**
      * Log the final resolved environment for debugging.
      */
     private void logFinalEnvironment() {
         String[] envVarsToLog = {
             "CUSTOM_DRIVER_PATH",
+            "CUSTOM_DRIVER_DIR",   // used by new libadrenotools-based loader
             "VK_ICD_FILENAMES",
             "VK_DRIVER_FILES",
             "TU_DEBUG",

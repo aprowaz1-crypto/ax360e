@@ -23,6 +23,10 @@
 #include "xenia/cpu/thread_state.h"
 #include "xenia/kernel/kernel_state.h"
 
+#if XE_PLATFORM_ANDROID
+#include <android/log.h>
+#endif
+
 // As with normal Microsoft, there are like twelve different ways to access
 // the audio APIs. Early games use XMA*() methods almost exclusively to touch
 // decoders. Later games use XAudio*() and direct memory writes to the XMA
@@ -212,6 +216,23 @@ X_STATUS AudioSystem::RegisterClient(uint32_t callback, uint32_t callback_arg,
 
 void AudioSystem::SubmitFrame(size_t index, float* samples) {
   SCOPE_profile_cpu_f("apu");
+
+#if XE_PLATFORM_ANDROID
+  static uint32_t submit_count = 0;
+  static uint32_t zero_count = 0;
+  submit_count++;
+  // Quick check: are the first 16 floats all zero?
+  bool all_zero = true;
+  for (int i = 0; i < 16 && all_zero; i++) {
+    if (samples[i] != 0.0f) all_zero = false;
+  }
+  if (all_zero) zero_count++;
+  if (submit_count % 500 == 1) {
+    __android_log_print(ANDROID_LOG_INFO, "ax360e_xma",
+        "SubmitFrame #%u (zero_frames=%u/%u) idx=%zu",
+        submit_count, zero_count, submit_count, index);
+  }
+#endif
 
   auto global_lock = global_critical_region_.Acquire();
   assert_true(index < kMaximumClientCount);

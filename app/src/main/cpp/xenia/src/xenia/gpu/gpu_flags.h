@@ -24,6 +24,8 @@ DECLARE_bool(gpu_allow_invalid_fetch_constants);
 
 DECLARE_bool(non_seamless_cube_map);
 
+DECLARE_bool(force_s3tc_software_decode);
+
 DECLARE_bool(half_pixel_offset);
 
 DECLARE_int32(query_occlusion_sample_lower_threshold);

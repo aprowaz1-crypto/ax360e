@@ -95,7 +95,6 @@ dword_result_t NtQueryInformationFile_entry(
       // SW that uses this seems to use the output as a way of uniquely
       // identifying a file for sorting/lookup so we can just give it an
       // arbitrary 4 byte integer most of the time
-      XELOGW("Stub XFileSectorInformation!");
       auto info = info_ptr.as<uint32_t*>();
       *info = 2048; // 2048 bytes per sector
       out_length = sizeof(uint32_t);

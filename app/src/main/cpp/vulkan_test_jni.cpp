@@ -2,8 +2,8 @@
 #include <jni.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
-#include "vkapi.h"
 #include "vkutil.h"
+#include "adreno_driver.h"   // preferred loader (libadrenotools)
 #include <atomic>
 #include <cctype>
 #include <string>
@@ -62,18 +62,30 @@ Java_aenu_ax360e_VulkanTestActivity_nRunVulkanTest(JNIEnv *env, jobject thiz, jo
         return g_vulkan_test_cancel_requested.load(std::memory_order_acquire);
     };
 
-    // Check if a custom driver should be loaded
+    // Check if a custom driver should be loaded (new clean path)
     const char* custom_driver_path = std::getenv("CUSTOM_DRIVER_PATH");
     bool is_custom = (custom_driver_path != nullptr && custom_driver_path[0] != '\0');
-    
+
     LOGI("Vulkan Test: is_custom=%d, CUSTOM_DRIVER_PATH=%s", is_custom, is_custom ? custom_driver_path : "NULL");
 
-    // Force reload to ensure we pick up the environment changes
-    vk_unload();
-    const char* lib_path = is_custom ? custom_driver_path : "libvulkan.so";
-    vk_load(lib_path, is_custom);
+    bool driver_loaded = false;
 
-    if (!vk_is_loaded()) {
+    if (is_custom) {
+        // Preferred path: new adreno_driver loader (libadrenotools)
+        std::string path(custom_driver_path);
+        size_t last_slash = path.find_last_of("/\\");
+        std::string dir  = (last_slash != std::string::npos) ? path.substr(0, last_slash) : ".";
+        std::string name = (last_slash != std::string::npos) ? path.substr(last_slash + 1) : path;
+
+        driver_loaded = load_custom_adreno_driver(dir, name, /*enable_redirection=*/true);
+        LOGI("Custom driver load via new loader: %s", driver_loaded ? "success" : "failed");
+    } else {
+        // System driver path
+        vk_load("libvulkan.so", /*is_adreno_custom=*/false);
+        driver_loaded = vk_is_loaded();
+    }
+
+    if (!driver_loaded) {
         cleanup();
         return env->NewStringUTF("Failed to load Vulkan library");
     }
@@ -418,7 +430,17 @@ Java_aenu_ax360e_VulkanTestActivity_nCancelVulkanTest(JNIEnv* env, jobject thiz)
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_aenu_ax360e_VulkanTestActivity_nGetVulkanDeviceInfo(JNIEnv *env, jobject thiz) {
-    if (!vk_is_loaded()) return env->NewStringUTF("Driver not loaded");
+    bool driverReady = is_using_custom_adreno_driver();
+
+#if !HAS_LIBADRENOTOOLS
+    if (!driverReady) {
+        driverReady = vk_is_loaded();
+    }
+#endif
+
+    if (!driverReady) {
+        return env->NewStringUTF("Driver not loaded");
+    }
 
     auto instance_opt = vk_create_instance("DeviceInfo");
     if (!instance_opt) return env->NewStringUTF("Instance failed");

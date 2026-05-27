@@ -47,6 +47,10 @@
 #include "document_file.h"
 
 #include "ax360e_emu.h"
+#include "turnip_env.h"
+#include "ax360e_perf_log.h"
+#include "adreno_driver.h"
+#include <fstream>
 //#include "nlohmann/json.hpp"
 
 #define LOG_TAG "ax360e_native"
@@ -222,11 +226,13 @@ namespace xe {
 
             void RequestPaintImpl() override {
                 static int rpi_count = 0;
+                static ax360e::perf::FrameTimeTracker g_frame_tracker(120);
                 rpi_count++;
                 if(rpi_count <= 5) {
                     LOGD("RequestPaintImpl called, count=%d", rpi_count);
                     XELOGI("RequestPaintImpl called, count={}", rpi_count);
                 }
+                g_frame_tracker.Tick();
                 AndroidWindowedAppContext* context=static_cast<AndroidWindowedAppContext*>(&app_context());
                 context->request_paint();
             }
@@ -362,6 +368,38 @@ namespace xe {
 
                 Profiler::Initialize();
                 Profiler::ThreadEnter("Main");
+
+                // === Custom Adreno Driver Loading (libadrenotools path) ===
+                // This must happen VERY EARLY, before any Vulkan code (including Xenia's
+                // VulkanGraphicsSystem) tries to load libvulkan.so.
+                {
+                    const char* driver_dir = std::getenv("CUSTOM_DRIVER_DIR");
+                    const char* driver_path = std::getenv("CUSTOM_DRIVER_PATH");
+
+                    if (driver_dir && driver_dir[0] != '\0') {
+                        // Prefer directory + infer common Turnip name if needed
+                        std::string dir(driver_dir);
+                        std::string name = "libvulkan_freedreno.so"; // common name
+
+                        // If we have a full path, extract the filename
+                        if (driver_path && driver_path[0] != '\0') {
+                            size_t last_slash = std::string(driver_path).find_last_of("/\\");
+                            if (last_slash != std::string::npos) {
+                                name = std::string(driver_path).substr(last_slash + 1);
+                            }
+                        }
+
+                        LOGD("Attempting early custom driver load via adreno_driver: dir=%s, name=%s", 
+                             dir.c_str(), name.c_str());
+
+                        bool loaded = load_custom_adreno_driver(dir, name, true);
+                        if (loaded) {
+                            LOGD("Custom Adreno driver loaded successfully via new loader (pre-Vulkan)");
+                        } else {
+                            LOGW("Custom driver load failed or fell back to legacy");
+                        }
+                    }
+                }
 
                 std::filesystem::path storage_root=cvars::storage_root;
 
@@ -764,6 +802,33 @@ namespace ae{
         LOGW("new thr: %s",tid.c_str());
 
         prctl(PR_SET_TIMERSLACK,1,0,0,0);
+
+        // Apply Turnip optimizations based on detected Adreno GPU model
+        {
+            LOGD("main_thr: Checking GPU model for Turnip optimizations...");
+            std::string gpu_name;
+            std::ifstream f("/sys/class/kgsl/kgsl-3d0/gpu_model");
+            if (f.is_open()) {
+                std::getline(f, gpu_name);
+                LOGD("main_thr: Found GPU model: %s", gpu_name.c_str());
+            } else {
+                LOGD("main_thr: Could not open kgsl gpu_model (errno: %d)", errno);
+                // Fallback for some kernels
+                std::ifstream f2("/sys/class/kgsl/kgsl-3d0/devname");
+                if (f2.is_open()) {
+                    std::getline(f2, gpu_name);
+                    LOGD("main_thr: Found GPU devname: %s", gpu_name.c_str());
+                } else {
+                    LOGD("main_thr: Could not open kgsl devname (errno: %d)", errno);
+                }
+            }
+            if (!gpu_name.empty()) {
+                turnip::ApplyRecommendedConfig(gpu_name);
+            } else {
+                LOGD("main_thr: No GPU model detected, applying safe Turnip defaults");
+                turnip::SetUbwcFlagHint(true);
+            }
+        }
 
         LOGD("main_thr: creating AndroidWindowedAppContext");
         AndroidWindowedAppContext wnd_ctx;

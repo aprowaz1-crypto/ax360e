@@ -1,0 +1,8 @@
+﻿.\gradlew.bat : Note: Some input files use or override a deprecated API.
+At line:1 char:26
++ ... ++\aX360e"; .\gradlew.bat :app:compileDebugJavaWithJavac --quiet 2>&1 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Note: Some inpu...deprecated API.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Note: Recompile with -Xlint:deprecation for details.

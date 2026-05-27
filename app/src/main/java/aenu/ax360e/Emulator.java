@@ -69,6 +69,41 @@ public class Emulator extends aenu.emulator.Emulator{
             int thermalLevel
     );
 
+    /**
+     * Returns a snapshot of CPU accuracy / diagnostic metrics.
+     * Includes counts for unhandled guest instructions, reservation (lwarx/stwcx)
+     * acquires/successes/failures (with success rate), timebase reads, and room for extension.
+     * Useful for measuring accuracy on real devices.
+     */
+    public native String get_cpu_accuracy_metrics();
+
+    /**
+     * Triggers the 128B reservation stress + false-share debug harness (CAPTAIN DIRECT ORDER).
+     * Wires Java/PerformanceMonitor/hidden dev setting into the native A64 backend
+     * validation sequences for lwarx + crossing stores (X+64, X+127) + V128 at 128B granules.
+     * Logs full research citations (128B granule, per-thread pairing errata, audio+physics
+     * false sharing) and increments crossing_invalidation_tests / false_share_detected
+     * (visible in get_cpu_accuracy_metrics and PERF_TAG logs).
+     * Used to prove the ClearXenonReservationIfStoreOverlaps research-to-code on real Adreno.
+     */
+    public native void trigger_128b_reservation_stress_test();
+
+    /**
+     * R1 (original paired-single research author) + CAPTAIN: triggers the ps_* accuracy
+     * validation harness (a64_ps_accuracy_stress).
+     * Modeled directly on trigger_128b_reservation_stress_test.
+     * Exercises ps_maddx (FMA highest priority), ps_addx/msubx, basic psq quant (GQR),
+     * NaN/denorm edges, and psq_st 128B reservation interaction (explicit warning in R1
+     * 55-tool report: psq_st stores must invalidate granules like normal float stores or
+     * lockfree+quantized titles corrupt atomics).
+     * Increments ps_arith_executed / ps_fma_cases / psq_load_store_count / ps_nan_denorm_edge_hits
+     * (surfaced in get_cpu_accuracy_metrics + logcat PERF_TAG).
+     * Activation also at A64Backend init. As fleet lands ps emitters, flip cvar on real
+     * Adreno + trigger from dev UI to immediately see if results are correct.
+     * Full R1 citations + 128B interaction notes in native RunPairedSingleAccuracyHarness.
+     */
+    public native void trigger_ps_accuracy_stress_test();
+
     // === New libadrenotools-based custom driver loading ===
     public static native boolean nativeLoadCustomAdrenoDriver(String driverDir, String driverName, boolean enableRedirection);
     public static native String nativeGetCustomDriverStatus();
@@ -138,6 +173,31 @@ public class Emulator extends aenu.emulator.Emulator{
                 info.icon=Base64.getDecoder().decode(json.getString("icon"));
 
             return info;
+        }
+    }
+
+    // === Robustness: error surfacing to Java UI layer from native A64 backend / FatalError ===
+    // Called by native code (via JNI from ShowSimpleMessageBox / unhandled paths) to surface
+    // problems (unhandled instrs, guest crashes, accuracy issues) as toasts/logs.
+    // Native threads attach and call this; we post to UI if possible.
+    public static void onNativeEmulatorError(String message, int severity) {
+        Log.e("ax360e_native_error", "SEV" + severity + ": " + message);
+        // Best-effort toast from any thread via Application context if available.
+        try {
+            android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+            handler.post(() -> {
+                try {
+                    android.widget.Toast.makeText(
+                        aenu.ax360e.Application.ctx,
+                        "Emulator: " + (message != null ? message.substring(0, Math.min(120, message.length())) : "error"),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show();
+                } catch (Exception toastEx) {
+                    Log.w("ax360e", "Toast failed in onNativeEmulatorError", toastEx);
+                }
+            });
+        } catch (Exception e) {
+            Log.e("ax360e", "Failed to post native error toast", e);
         }
     }
 }

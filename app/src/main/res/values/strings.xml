@@ -211,8 +211,21 @@
     <string name="custom_driver_removed">Custom GPU driver removed</string>
     <string name="custom_driver_type_editor_title">Custom Driver Type</string>
     <string name="custom_driver_type_input_hint">Enter HID type (example: android,nop)</string>
-    <string name="custom_driver_type_description">Set the HID load type string used by the emulator runtime.</string>
+    <string name="custom_driver_type_description">Set the HID load type string used by the emulator runtime. Note: GPU custom drivers (Turnip) use the separate modern libadrenotools loader path (independent of this HID setting).</string>
     <string name="custom_driver_type_invalid">Driver type cannot be empty</string>
+
+    <!-- p3-5 Settings Integration Polish: quick actions, live summaries, libadrenotools vs legacy indicators -->
+    <string name="view_full_driver_status">View Full Driver Status</string>
+    <string name="view_full_driver_status_summary">Open rich live report (install • runtime • compatibility • libadrenotools vs legacy)</string>
+    <string name="refresh_driver_state">Refresh Driver State</string>
+    <string name="refresh_driver_state_summary">Re-query TurnipDriverInfo + natives for current loader/runtime state</string>
+    <string name="driver_loader_path">Driver Loader Path</string>
+    <string name="driver_loader_path_modern">Modern: libadrenotools (recommended) ✓</string>
+    <string name="driver_loader_path_legacy">Legacy loader (consider migrating)</string>
+    <string name="driver_loader_path_none">No custom GPU driver active</string>
+    <string name="driver_loader_build_support"> (build supports libadrenotools)</string>
+    <string name="driver_loader_build_no_support"> (build: legacy only)</string>
+    <string name="driver_state_refreshed">Driver state refreshed from live runtime</string>
 
     <string name="es_kernel">Kernel</string>
     <string name="es_kernel_allow_nui_initialization">Allow NUI Initialization</string>
@@ -566,6 +579,15 @@ This Config requires you to pair an analog and digitial flag together while digi
     <!-- Advanced Turnip Settings -->
     <string name="turnip_advanced_settings">Advanced Turnip Settings</string>
     <string name="turnip_driver_info">Driver Information</string>
+    <!-- Dialog strings for Phase 3 p3-2 UX Polish -->
+    <string name="turnip_driver_info_title">Turnip Driver Information</string>
+    <string name="gpu_driver_status_title">GPU Driver Status</string>
+    <string name="copy_to_clipboard">📋 Copy to Clipboard</string>
+    <string name="driver_info_copied">Driver info copied to clipboard</string>
+    <string name="refresh">Refresh</string>
+    <string name="close">Close</string>
+    <string name="driver_recommended">✓ Recommended for your device GPU</string>
+    <string name="driver_compatibility_unknown">Compatibility with your GPU could not be determined</string>
     <string name="turnip_env_variables">Environment Variables</string>
     <string name="turnip_gmem_mode">Force GMEM Mode</string>
     <string name="turnip_gmem_mode_hint">Forces GMEM mode for Adreno 710/720 GPUs (TU_DEBUG=gmem)</string>
@@ -640,6 +662,41 @@ This Config requires you to pair an analog and digitial flag together while digi
     <string name="vulkan_driver_unknown">Driver: Unknown</string>
     <string name="vulkan_rendering_surface">Vulkan rendering surface</string>
     <string name="close_test">Close Test</string>
+
+    <!-- AboutActivity Driver Info Polish (p3-4) -->
+    <string name="driver_info">Driver Info</string>
+    <string name="driver_troubleshooting">Troubleshooting</string>
+    <string name="open_driver_settings">Driver Settings</string>
+    <string name="view_full_driver_report">View Full Driver Report</string>
+    <string name="driver_status_section">GPU Driver Status</string>
+    <string name="driver_troubleshooting_title">Driver Troubleshooting Tips</string>
+    <string name="driver_troubleshooting_content">Common fixes for Turnip / libadrenotools issues:\n\n• Force-stop aX360e completely (from recents) then relaunch\n• In Settings → Custom Drivers, tap Remove then re-install a fresh compatible ZIP\n• In Game Profile settings, ensure "Driver Selection" is set to Default or Custom (avoid FORCE_SYSTEM)\n• Confirm the build reports "libadrenotools ENABLED" in About → Driver Info\n• For black screen / crash on launch: try different Mesa version (26.0 R7/R8 recommended for Adreno 840)\n• Check toolbar subtitle on main screen (tap it for live status)\n• For advanced: use logcat filter "AdrenoDriver" or "Turnip"\n\nUse the "Driver Info" button or Settings for the full rich diagnostic report with copy-to-clipboard.</string>
+    <string name="build_supports_libadrenotools">Build supports libadrenotools</string>
+    <string name="build_no_libadrenotools">Build does NOT include libadrenotools (legacy only)</string>
+
+    <!-- Phase 3 p3-6 Final Polish & Documentation: extracted UI strings for badges, toolbar, dialogs, help text (consistency + i18n) -->
+    <string name="driver_badge_no_custom">No custom driver</string>
+    <string name="driver_badge_libadrenotools_active">libadrenotools + Turnip ✓ active</string>
+    <string name="driver_badge_libadrenotools_installed">libadrenotools + Turnip (installed)</string>
+    <string name="driver_badge_legacy">Custom driver (legacy)</string>
+    <string name="driver_badge_inactive">Custom driver (inactive)</string>
+    <string name="driver_header_active">libadrenotools + Turnip ✓</string>
+    <string name="driver_header_installed">libadrenotools + Turnip</string>
+    <string name="toolbar_subtitle_active">GPU: libadrenotools + Turnip ✓</string>
+    <string name="toolbar_subtitle_custom">GPU: Custom driver (tap for status)</string>
+    <string name="driver_status_unavailable">Driver status unavailable</string>
+    <string name="copy_failed">Copy failed</string>
+    <string name="driver_help_tip">ℹ Tip: Tap Refresh after installs/restarts for live state. Copy report to share diagnostics.</string>
+    <string name="driver_summary_no_driver">No driver installed • tap for guidance</string>
+    <string name="driver_summary_libadrenotools_active">libadrenotools active • tap for full report</string>
+    <string name="driver_summary_libadrenotools_inactive">libadrenotools installed (inactive) • tap for details</string>
+    <string name="driver_summary_legacy">Legacy active • tap for full report</string>
+    <string name="driver_summary_inactive">Driver installed (inactive) • tap for details</string>
+    <string name="driver_summary_default">Tap to view Driver Information</string>
+    <string name="driver_status_libadrenotools_active">libadrenotools ACTIVE</string>
+    <string name="driver_status_libadrenotools_not_active">libadrenotools (not active)</string>
+    <string name="driver_status_legacy">Legacy active</string>
+    <string name="driver_status_installed_inactive">Installed (inactive)</string>
 
 </resources>
 

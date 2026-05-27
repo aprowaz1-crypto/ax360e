@@ -169,12 +169,28 @@
     </PreferenceScreen>
     <PreferenceScreen app:title="@string/es_custom_drivers"
         app:key="CustomDrivers" >
-        <Preference app:title="@string/es_custom_drivers_gpu"
-            app:key="CustomDrivers|gpu_driver"
-            app:summary="@string/es_hint_custom_drivers_gpu" />
-        <Preference app:title="@string/es_custom_drivers_gpu_remove"
-            app:key="CustomDrivers|gpu_driver_remove"
-            app:summary="@string/es_hint_custom_drivers_gpu_remove" />
+        <!-- p3-5: Better organization + subtle modern libadrenotools indicator vs legacy -->
+        <PreferenceCategory app:title="GPU Driver (Turnip)">
+            <Preference app:title="@string/es_custom_drivers_gpu"
+                app:key="CustomDrivers|gpu_driver"
+                app:summary="@string/es_hint_custom_drivers_gpu" />
+            <Preference app:title="@string/es_custom_drivers_gpu_remove"
+                app:key="CustomDrivers|gpu_driver_remove"
+                app:summary="@string/es_hint_custom_drivers_gpu_remove" />
+            <!-- Live indicator for libadrenotools (modern) vs legacy path -->
+            <Preference app:title="@string/driver_loader_path"
+                app:key="CustomDrivers|driver_loader_indicator"
+                app:summary="Detecting..."
+                android:selectable="false"
+                android:enabled="false" />
+            <!-- Quick actions for live state (p3-5) -->
+            <Preference app:title="@string/view_full_driver_status"
+                app:key="CustomDrivers|view_driver_status"
+                app:summary="@string/view_full_driver_status_summary" />
+            <Preference app:title="@string/refresh_driver_state"
+                app:key="CustomDrivers|refresh_driver_state"
+                app:summary="@string/refresh_driver_state_summary" />
+        </PreferenceCategory>
         <Preference app:title="@string/es_custom_drivers_load_type"
             app:key="CustomDrivers|load_driver_type"
             app:summary="@string/es_hint_custom_drivers_load_type" />
@@ -540,6 +556,24 @@
                 app:key="TurnipAdvanced|noubwc"
                 app:summary="@string/turnip_noubwc_hint" />
         </PreferenceCategory>
+
+        <PreferenceCategory app:title="Performance Tuning">
+            <aenu.preference.CheckBoxPreference app:title="Force Binning Pass"
+                app:key="TurnipAdvanced|forcebin"
+                app:summary="Force TBDR binning pass for better tile utilization (TU_DEBUG=forcebin)" />
+            <aenu.preference.CheckBoxPreference app:title="Disable Flush"
+                app:key="TurnipAdvanced|noflush"
+                app:summary="Skip unnecessary GPU flushes between draw calls (TU_DEBUG=noflush)" />
+            <aenu.preference.CheckBoxPreference app:title="Disable Visibility Stream"
+                app:key="TurnipAdvanced|novsc"
+                app:summary="Disable VPC visibility culling - fixes missing geometry on some GPUs (TU_DEBUG=novsc)" />
+        </PreferenceCategory>
+
+        <PreferenceCategory app:title="Graphical Fixes">
+            <aenu.preference.CheckBoxPreference app:title="Force Software BCn Decode"
+                app:key="GPU|force_s3tc_software_decode"
+                app:summary="Force compute shader BCn/S3TC texture decoding - fixes black/corrupt textures on Turnip" />
+        </PreferenceCategory>
     </PreferenceScreen>
     
     <!-- Performance Monitoring -->
@@ -602,6 +636,9 @@
         <aenu.preference.CheckBoxPreference app:title="@string/low_memory_mode"
             app:key="PowerManagement|low_memory_mode"
             app:summary="@string/low_memory_mode_hint" />
+        <aenu.preference.CheckBoxPreference app:title="Force Max Clocks (Root)"
+            app:key="Performance|force_max_clocks"
+            app:summary="Lock CPU to maximum frequency. Requires Root and active cooling (Fan)!" />
     </PreferenceScreen>
     
     <!-- Performance Presets -->

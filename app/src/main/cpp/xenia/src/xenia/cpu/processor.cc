@@ -839,6 +839,9 @@ void Processor::UpdateThreadExecutionStates(
       std::memcpy(&thread_info->guest_context,
                   thread->thread_state()->context(),
                   sizeof(thread_info->guest_context));
+      // Full PPCContext copy (incl. new gqr[8]) for save/restore in debug.
+      // Infrastructure from R1 ps research report (GQR state prereq).
+      // See ppc_context.h comments + ppc_emit_fpu.cc plan block.
     }
 
     // Grab stack trace and X64 context then resolve all symbols.
@@ -1337,8 +1340,9 @@ uint32_t Processor::CalculateNextGuestInstruction(ThreadDebugInfo* thread_info,
         uint32_t result;
         while (true) {
             result = *host_address;
-            // todo: should call a processor->backend function that acquires a
-            // reservation instead of using host atomics
+            // Note: Real reservation (lwarx/stwcx) is now handled via dedicated
+            // LOAD_RESERVED / STORE_RESERVED HIR ops that lower to host exclusive
+            // monitors (LDAXR/STLXR on AArch64). This path is legacy / fallback.
             if (xe::atomic_cas(result, xe::byte_swap(xe::byte_swap(result) + 1),
                                host_address)) {
                 break;

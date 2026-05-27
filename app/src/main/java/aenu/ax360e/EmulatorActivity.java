@@ -129,6 +129,10 @@ public class EmulatorActivity extends Activity implements SurfaceHolder.Callback
         boolean showOverlay = prefs.getBoolean("Performance|show_performance_overlay", false);
         performanceOverlay.setVisibility(showOverlay ? android.view.View.VISIBLE : android.view.View.GONE);
 
+        if (prefs.getBoolean("Performance|force_max_clocks", false)) {
+            applyClockLocks(true);
+        }
+
         // Initialize performance monitoring
         performanceMonitor = new PerformanceMonitor(this);
         memoryPressureManager = new MemoryPressureManager(this);
@@ -297,6 +301,13 @@ public class EmulatorActivity extends Activity implements SurfaceHolder.Callback
         // Stop performance monitoring
         if (metricsHandler != null && metricsUpdateRunnable != null) {
             metricsHandler.removeCallbacks(metricsUpdateRunnable);
+        }
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (prefs.getBoolean("Performance|force_max_clocks", false)) {
+            // Restore synchronously or at least try to start the restore before we die
+            applyClockLocks(false);
+            try { Thread.sleep(200); } catch (Exception ignored) {} 
         }
 
         releaseControllerState();
@@ -587,6 +598,37 @@ public class EmulatorActivity extends Activity implements SurfaceHolder.Callback
         }
 
         return true;
+    }
+
+    private void applyClockLocks(boolean enable) {
+        new Thread(() -> {
+            if (enable) {
+                Log.i("ax360e", "Applying Max Clock Locks (Root required)");
+                // Snapdragon 8 Elite (sun) clock locking script
+                String cmd = "setprop persist.vendor.power.mode 2; " +
+                             "stop vendor.thermal-hal; " +
+                             "stop perf2-hal-1-0; " +
+                             "for i in 0 1 2 3 4 5 6 7; do " +
+                             "  if [ -f /sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq ]; then " +
+                             "    echo performance > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor; " +
+                             "    cat /sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq; " +
+                             "  fi; " +
+                             "done; " +
+                             "echo 1 > /sys/class/thermal/thermal_message/sconfig"; // Odin-specific high perf
+                Utils.runShell(cmd, true);
+            } else {
+                Log.i("ax360e", "Restoring Thermal Controls");
+                String cmd = "setprop persist.vendor.power.mode 0; " +
+                             "start vendor.thermal-hal; " +
+                             "start perf2-hal-1-0; " +
+                             "for i in 0 1 2 3 4 5 6 7; do " +
+                             "  echo schedutil > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_governor; " +
+                             "  echo 0 > /sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq; " +
+                             "done; " +
+                             "echo 0 > /sys/class/thermal/thermal_message/sconfig";
+                Utils.runShell(cmd, true);
+            }
+        }).start();
     }
 
 }

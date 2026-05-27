@@ -134,21 +134,23 @@ public class Application extends android.app.Application{
         // Extract game patches from assets if needed
         extractGamePatches();
 
-        // Initialize custom driver environment
+        // Initialize custom driver environment (sets CUSTOM_DRIVER_PATH + LD_LIBRARY_PATH + stubs)
         CustomDriverUtils.setupDriverEnv(this);
 
-        // Apply Turnip environment variables if custom driver is installed.
-        // This must run before Emulator.load_library() so env vars are in place for dlopen.
-        // LaunchEnvironmentResolver re-applies these at game-launch time with per-game overrides.
+        // Apply global Turnip environment variables (TU_DEBUG, FD_DEV_FEATURES, etc.)
+        // This must happen early, before Emulator.load_library(), because some Turnip builds
+        // read these variables at dlopen / first use time.
+        //
+        // IMPORTANT: LaunchEnvironmentResolver is the authoritative place for per-game + profile
+        // overrides. It re-applies (and can clear) these variables right before booting a game.
+        // Avoid scattering raw Os.setenv calls for Turnip variables elsewhere.
         if (CustomDriverUtils.isDriverInstalled(this)) {
             try {
-                TurnipEnvManager turnipMgr = new TurnipEnvManager(this);
-                for (TurnipEnvManager.EnvVar var : turnipMgr.buildEnvironmentVariables()) {
-                    android.system.Os.setenv(var.name, var.value, true);
-                    android.util.Log.d("Application", "Set Turnip env: " + var.toString());
-                }
-            } catch (android.system.ErrnoException e) {
-                android.util.Log.e("Application", "Failed to set Turnip environment variables", e);
+                // Use LaunchEnvironmentResolver's logic for consistency (it already handles
+                // global config file + preferences + device recommendations).
+                new LaunchEnvironmentResolver(this).applyGlobalTurnipEnvironmentOnly();
+            } catch (Exception e) {
+                android.util.Log.e("Application", "Failed to apply early global Turnip env vars", e);
             }
         }
 

@@ -69,6 +69,10 @@ struct ThreadDebugInfo {
 
   // Last-sampled PPC context.
   // This is updated whenever the debugger stops.
+  // Includes gqr[8] (Graphics Quantization Registers) added for R1 ps_*
+  // research report infrastructure (prereq for psq_l/psq_st).
+  // See detailed comments + helpers in ppc_context.h citing the plan
+  // block in ppc_emit_fpu.cc.
   ppc::PPCContext guest_context;
   // Last-sampled host context.
   // This is updated whenever the debugger stops and must be used instead of any

@@ -194,6 +194,18 @@ PPCOpcode LookupOpcode(uint32_t code) {
     switch ((ExtractBits(code, 27, 27) << 0)) {
       case 0b1: PPC_DECODER_HIT(vsldoi128);
     }
+    // ps_* A-form decode (primary 4, XO in 26-30) per R1 ps report + plan block.
+    // Enables frontend to map ... -> PPCOpcode::ps_xxx so emitters called (incl new ps_subx/ps_sel).
+    // CAPTAIN RE-TASK extension: added subx/sel (XO 20/23) + mul (25) for full landed arithmetic family.
+    // (mrx is X-form, decoded elsewhere; psq etc remain for other agents).
+    switch ((ExtractBits(code, 26, 30) << 0)) {
+      case 0b10100: PPC_DECODER_HIT(ps_subx);   // XO=20 ps_subx (0x10000028)
+      case 0b10101: PPC_DECODER_HIT(ps_addx);
+      case 0b10111: PPC_DECODER_HIT(ps_sel);    // XO=23 ps_sel (0x1000002e)
+      case 0b11001: PPC_DECODER_HIT(ps_mulx);   // XO=25
+      case 0b11100: PPC_DECODER_HIT(ps_msubx);
+      case 0b11101: PPC_DECODER_HIT(ps_maddx);
+    }
     PPC_DECODER_MISS;
   case 5:
     switch ((ExtractBits(code, 22, 22) << 5)|(ExtractBits(code, 27, 27) << 0)) {

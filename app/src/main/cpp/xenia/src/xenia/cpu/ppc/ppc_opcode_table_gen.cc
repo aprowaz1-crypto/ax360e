@@ -94,6 +94,17 @@ PPCOpcodeInfo ppc_opcode_table[] = {
   INSTRUCTION(0xfc00002c, "fsqrtx"      , kA      , kF, kGeneral),
   INSTRUCTION(0xec000028, "fsubsx"      , kA      , kF, kGeneral),
   INSTRUCTION(0xfc000028, "fsubx"       , kA      , kF, kGeneral),
+  // ps_* arithmetic registration (Agent D + CAPTAIN RE-TASK Phase1 ext from master plan).
+  // Extended family (ps_addx/maddx/msubx/mulx/mrx/subx/sel) per R1 ps report + in-tree plan.
+  // These make the emitters (incl new ps_subx/ps_sel) live for dispatch + accuracy debug paths.
+  // (numeric opcode values for doc; actual decode via lookup_gen switch on primary 4 + XO bits).
+  INSTRUCTION(0x1000002a, "ps_addx"     , kA      , kF, kGeneral),
+  INSTRUCTION(0x1000003a, "ps_maddx"    , kA      , kF, kGeneral),
+  INSTRUCTION(0x10000038, "ps_msubx"    , kA      , kF, kGeneral),
+  INSTRUCTION(0x10000032, "ps_mulx"     , kA      , kF, kGeneral),
+  INSTRUCTION(0x7c000026, "ps_mrx"      , kX      , kF, kGeneral),
+  INSTRUCTION(0x10000028, "ps_subx"     , kA      , kF, kGeneral),
+  INSTRUCTION(0x1000002e, "ps_sel"      , kA      , kF, kGeneral),
   INSTRUCTION(0x7c0007ac, "icbi"        , kX      , kM, kGeneral),
   INSTRUCTION(0x4c00012c, "isync"       , kXL     , kI, kGeneral),
   INSTRUCTION(0x88000000, "lbz"         , kD      , kM, kGeneral),

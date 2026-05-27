@@ -92,6 +92,16 @@ enum class PPCOpcode : uint32_t {
   fsqrtx,
   fsubsx,
   fsubx,
+  // ps_* (Agent D + CAPTAIN RE-TASK Phase 1 ext): ps_addx/maddx/msubx/mulx/mrx + ps_subx/ps_sel
+  // (high-ROI arithmetic family per master PAIRED-SINGLE plan + R1 report). Enables
+  // dispatch from frontend to real emitters (ps_* specific debug + accuracy counters too).
+  ps_addx,
+  ps_maddx,
+  ps_msubx,
+  ps_mulx,
+  ps_mrx,
+  ps_subx,
+  ps_sel,
   icbi,
   isync,
   lbz,

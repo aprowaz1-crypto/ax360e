@@ -135,6 +135,12 @@ void PPCContext::SetRegFromString(const char* name, const char* value) {
     this->f[n] = string_util::from_string<double>(value);
   } else if (sscanf(name, "v%d", &n) == 1) {
     this->v[n] = string_util::from_string<vec128_t>(value);
+  } else if (sscanf(name, "gqr%d", &n) == 1) {
+    // GQR support for debugger / context save/restore strings.
+    // Wired per R1 ps research report (GQR state infrastructure).
+    // See get_gqr/set_gqr + quantization helpers in ppc_context.h.
+    // References plan block in ppc_emit_fpu.cc (Phase 2 GQR + psq_*).
+    this->set_gqr(static_cast<uint32_t>(n), string_util::from_string<uint32_t>(value));
   } else if (std::strcmp(name, "cr") == 0) {
     this->set_cr(string_util::from_string<uint64_t>(value));
   } else {
@@ -185,6 +191,17 @@ bool PPCContext::CompareRegWithString(const char* name, const char* value,
     uint64_t expected = string_util::from_string<uint64_t>(value);
     if (actual != expected) {
       result = fmt::format("{:016X}", actual);
+      return false;
+    }
+    return true;
+  } else if (sscanf(name, "gqr%d", &n) == 1) {
+    // GQR compare for context save/restore + testing (R1 ps report).
+    // Uses new get_gqr accessor. See quantization helpers + plan in
+    // ppc_emit_fpu.cc (GQR state prerequisite for future psq_l/psq_st).
+    uint32_t actual = this->get_gqr(static_cast<uint32_t>(n));
+    uint32_t expected = string_util::from_string<uint32_t>(value);
+    if (actual != expected) {
+      result = fmt::format("{:08X}", actual);
       return false;
     }
     return true;

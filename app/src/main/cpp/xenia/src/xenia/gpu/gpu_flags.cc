@@ -41,6 +41,15 @@ DEFINE_bool(
     "behavior.",
     "GPU");
 
+DEFINE_bool(
+    force_s3tc_software_decode, false,
+    "Force software (compute shader) decoding of all S3TC/BCn compressed "
+    "textures (DXT1, DXT2/3, DXT4/5, DXN/BC5, DXT5A/BC4) regardless of "
+    "driver-reported hardware support. Enable this if BCn-compressed assets "
+    "appear black or corrupted on Turnip/Adreno, which can advertise BCn "
+    "support while decoding incorrectly.",
+    "GPU");
+
 // Extremely bright screen borders in 4D5307E6.
 // Reading between texels with half-pixel offset in 58410954.
 DEFINE_bool(

@@ -108,6 +108,21 @@
 
         </LinearLayout>
 
+        <!-- Phase 3 UX Polish (p3-1): Optional subtle driver status header line above game list (in AppBar, scrolls away).
+             Only populated/shown for relevant driver states to remain non-distracting. See MainActivity. -->
+        <TextView
+            android:id="@+id/driver_status_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="4dp"
+            android:textSize="10sp"
+            android:alpha="0.6"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:gravity="center"
+            android:visibility="gone" />
+
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Pull to Refresh wraps the full content area; RecyclerView owns scrolling -->
@@ -163,6 +178,21 @@
                     android:layout_marginTop="16dp"
                     android:text="@string/set_game_dir"
                     style="@style/Widget.Material3.Button.TonalButton" />
+
+                <!-- Phase 3 UX Polish (p3-1): Subtle, non-intrusive driver status indicator in empty state.
+                     Uses TurnipDriverInfo.detect(context) + Emulator nativeIsUsing* APIs.
+                     Updated onResume() and when show_game_list toggles empty state.
+                     Small 11sp + low alpha keeps it minimal and non-distracting. -->
+                <TextView
+                    android:id="@+id/empty_state_driver_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:textSize="11sp"
+                    android:alpha="0.75"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:gravity="center"
+                    android:visibility="gone" />
 
             </LinearLayout>
 

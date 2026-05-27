@@ -4,14 +4,54 @@
     android:background="@android:color/transparent"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <!-- Prominent Driver Info quick actions bar (p3-4: dedicated section / discoverable buttons) -->
+    <LinearLayout
+        android:id="@+id/driver_actions_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal"
+        android:padding="4dp"
+        android:layout_alignParentTop="true"
+        android:background="#22000000">
+
+        <Button
+            android:id="@+id/driver_info_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/driver_info"
+            android:textSize="12sp"
+            android:paddingHorizontal="8dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/driver_troubleshoot_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/driver_troubleshooting"
+            android:textSize="12sp"
+            android:paddingHorizontal="8dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/driver_settings_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/open_driver_settings"
+            android:textSize="12sp"
+            android:paddingHorizontal="8dp" />
+    </LinearLayout>
+
+    <!-- Bottom action buttons (original) -->
     <Button
         android:id="@+id/gratitude"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/gratitude"
         android:layout_alignParentBottom="true"
-        android:layout_alignParentLeft="true"/>
-
+        android:layout_alignParentLeft="true"
+        android:textSize="12sp"/>
 
     <Button
         android:id="@+id/update_log"
@@ -19,7 +59,8 @@
         android:layout_height="wrap_content"
         android:text="@string/update_log"
         android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"/>
+        android:layout_alignParentRight="true"
+        android:textSize="12sp"/>
 
     <Button
         android:id="@+id/open_source_licenses"
@@ -28,15 +69,21 @@
         android:text="@string/open_source_licenses"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"/>
+        android:textSize="12sp"/>
 
-<ScrollView
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:layout_above="@id/open_source_licenses">
-    <TextView
-        android:id="@+id/about_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-</ScrollView>
+    <!-- Main scrollable content: device info + nicely formatted driver section -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/driver_actions_bar"
+        android:layout_above="@id/open_source_licenses"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+        <TextView
+            android:id="@+id/about_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:lineSpacingExtra="2dp"/>
+    </ScrollView>
 </RelativeLayout>

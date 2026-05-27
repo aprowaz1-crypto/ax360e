@@ -81,6 +81,10 @@ class PPCHIRBuilder : public hir::HIRBuilder {
   void StoreReserved(Value* val);
   Value* LoadReserved();
 
+  // New accurate reservation ops (lowered to host exclusive monitors on A64)
+  Value* LoadReservedValue(Value* address, hir::TypeName type);
+  Value* StoreReservedValue(Value* address, Value* value);  // returns I8 success (1 = succeeded)
+
  private:
   void MaybeBreakOnInstruction(uint32_t address);
   void AnnotateLabel(uint32_t address, Label* label);

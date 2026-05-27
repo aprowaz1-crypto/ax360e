@@ -9,6 +9,7 @@
 #ifndef AX360E_XE_AAUDIO_AUDIO_DRIVER_H
 #define AX360E_XE_AAUDIO_AUDIO_DRIVER_H
 
+#include <atomic>
 #include <mutex>
 #include <queue>
 #include <stack>
@@ -59,6 +60,7 @@ class AAudioAudioDriver : public AudioDriver {
   std::queue<float*> frames_queued_ = {};
   std::stack<float*> frames_unused_ = {};
   std::mutex frames_mutex_ = {};
+  std::atomic<float> volume_{1.0f};
 };
 
 }  // namespace aaudio

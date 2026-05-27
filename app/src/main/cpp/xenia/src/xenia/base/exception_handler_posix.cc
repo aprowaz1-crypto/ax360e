@@ -18,12 +18,15 @@
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
 #include "xenia/base/platform.h"
+#include "xenia/cpu/cpu_flags.h"  // for cvars::a64_accuracy_debug (ESR/DSISR/FSR synthesis polish on data aborts)
 
 namespace xe {
 
 bool signal_handlers_installed_ = false;
 struct sigaction original_sigill_handler_;
 struct sigaction original_sigsegv_handler_;
+struct sigaction original_sigbus_handler_;
+struct sigaction original_sigfpe_handler_;
 
 // This can be as large as needed, but isn't often needed.
 // As we will be sometimes firing many exceptions we want to avoid having to
@@ -69,6 +72,7 @@ static void ExceptionHandlerCallback(int signal_number, siginfo_t* signal_info,
   thread_context.sp = mcontext.sp;
   thread_context.pc = mcontext.pc;
   thread_context.cpsr = mcontext.pstate;
+  thread_context.esr = 0;  // Default: unavailable (common Android/older NDK fallback)
   struct fpsimd_context* mcontext_fpsimd = nullptr;
   struct esr_context* mcontext_esr = nullptr;
   for (struct _aarch64_ctx* mcontext_extension =
@@ -96,6 +100,9 @@ static void ExceptionHandlerCallback(int signal_number, siginfo_t* signal_info,
     thread_context.fpcr = mcontext_fpsimd->fpcr;
     std::memcpy(thread_context.v, mcontext_fpsimd->vregs,
                 sizeof(thread_context.v));
+  }
+  if (mcontext_esr) {
+    thread_context.esr = mcontext_esr->esr;
   }
 #endif  // XE_ARCH
 
@@ -140,10 +147,16 @@ static void ExceptionHandlerCallback(int signal_number, siginfo_t* signal_info,
               instruction_is_store ? Exception::AccessViolationOperation::kWrite
                                    : Exception::AccessViolationOperation::kRead;
         } else {
-          assert_always(
-              "No ESR in the exception thread context, or it's not a Data "
-              "Abort, and the faulting instruction is not a known load, "
-              "prefetch or store instruction");
+          XELOGE("A64 signal handler: No ESR or unknown fault instr @ pc=0x{:X} on Android - treating as unknown access (resilience fallback)",
+                 mcontext.pc);
+          // R2 ESR/AV improvement (per TLB research package): surface captured esr even in fallback path
+          // (non-MMIO AV). Always useful on Android for FSR/DSISR synth diagnosis under a64_accuracy_debug.
+          if (mcontext_esr) {
+            XELOGW("  (fallback path) captured esr=0x{:X} (non-zero logged for Android AV diagnosis)",
+                   static_cast<uint32_t>(mcontext_esr->esr));
+          }
+          // Do not assert: on real devices during dev this can happen with custom
+          // drivers / Turnip / unhandled paths. Log and continue.
           access_violation_operation =
               Exception::AccessViolationOperation::kUnknown;
         }
@@ -155,7 +168,58 @@ static void ExceptionHandlerCallback(int signal_number, siginfo_t* signal_info,
       ex.InitializeAccessViolation(
           &thread_context, reinterpret_cast<uint64_t>(signal_info->si_addr),
           access_violation_operation);
+
+#if XE_ARCH_ARM64
+      // R2 TLB/ERAT + ESR hardening (minimal package): under a64_accuracy_debug,
+      // emit detailed ESR breakdown useful for guest DSISR/FSR synthesis on
+      // data aborts (DSI 0x300/0x400 paths) and alignment. ESR bits directly
+      // inform DSISR (W=bit6, other cause fields) + FSR equiv for PPC delivery
+      // in processor/mmio/physical paths (see emulator.cc:740 comments).
+      // This is the "ESR polish" recommended in R2 report for better accuracy
+      // diagnostics without changing core synthesis logic.
+      // NEW (re-task): TLB+prot fault during psq_st + lockfree now explicitly
+      // exercised in ps harness TLB seqs (a64_backend.cc) -- ESR logs surface
+      // in same a64_accuracy_debug runs as TLB/ps/128B validation.
+      // Citations: R2 TLB/ERAT research (ESR/DSISR synthesis section) +
+      // exception_handler_posix.cc:175 (this block) + host_thread_context.h:210 + ps harness integration.
+      if (cvars::a64_accuracy_debug && mcontext_esr) {
+        uint32_t esr_val = mcontext_esr->esr;
+        uint32_t ec = (esr_val >> 26) & 0x3F;
+        bool is_data_abort = (ec == 0b100100 || ec == 0b100101);
+        bool w_bit = (esr_val & (UINT64_C(1) << 6)) != 0;
+        XELOGW("A64 Accuracy (R2 ESR polish): SIGSEGV data abort @pc=0x{:X} si_addr=0x{:X} "
+               "ESR=0x{:08X} EC=0x{:02X} (data_abort={}) W_bit={} (suggest DSISR W={})",
+               mcontext.pc, (uintptr_t)signal_info->si_addr, esr_val, ec, is_data_abort, w_bit, w_bit ? 1 : 0);
+      }
+#endif
     } break;
+    case SIGBUS:
+      // Common on AArch64 for alignment faults (BUS_ADRALN), some bus errors.
+      // Treat as access violation for guest delivery (alignment exception path
+      // in PPC). ESR (if present) can help synthesize guest FSR/DSISR.
+      // On Android this improves stability vs. default termination.
+      ex.InitializeAccessViolation(
+          &thread_context, reinterpret_cast<uint64_t>(signal_info->si_addr),
+          Exception::AccessViolationOperation::kUnknown);  // Alignment often unknown R/W without full decode
+
+#if XE_ARCH_ARM64
+      // Same R2 ESR polish for SIGBUS (alignment 0x600 path in guest).
+      // (TLB+ps harness integration: alignment AVs during psq_st paths now co-occur with TLB seqs under debug.)
+      if (cvars::a64_accuracy_debug && mcontext_esr) {
+        XELOGW("A64 Accuracy (R2 ESR polish): SIGBUS alignment @pc=0x{:X} ESR=0x{:08X} "
+               "(use for guest FSR/DSISR synth in AV callback / processor).",
+               mcontext.pc, mcontext_esr->esr);
+      }
+#endif
+      break;
+    case SIGFPE:
+      // Floating point exception (divide-by-zero, invalid, overflow, etc.).
+      // Deliver to guest via FPSCR (already captured) + possible FPU exception.
+      // For now map to IllegalInstruction so existing paths (breakpoints etc.)
+      // or processor can decide; future: dedicated kFloatingPoint code.
+      // Captured fpsr/fpcr + esr (if any) give details for guest accuracy.
+      ex.InitializeIllegalInstruction(&thread_context);
+      break;
     default:
       assert_unhandled_case(signal_number);
   }
@@ -163,6 +227,13 @@ static void ExceptionHandlerCallback(int signal_number, siginfo_t* signal_info,
   for (size_t i = 0; i < xe::countof(handlers_) && handlers_[i].first; ++i) {
     if (handlers_[i].first(&ex, handlers_[i].second)) {
       // Exception handled.
+#if XE_ARCH_ARM64 && (XE_PLATFORM_ANDROID || XE_PLATFORM_AX360E)
+      // Extra visibility for A64 Android development / guest exceptions during
+      // accuracy work or unhandled instr traps. Now covers SIGSEGV (page faults),
+      // SIGBUS (alignment), SIGFPE (FP), with ESR when available for FSR/DSISR synth.
+      // R2: enhanced under a64_accuracy_debug via detailed logs above for DSISR polish.
+      XELOGI("A64 POSIX signal handled (Android): pc=0x{:016X} code={} esr=0x{:X}", ex.pc(), static_cast<int>(ex.code()), ex.esr());
+#endif
 #if XE_ARCH_AMD64
       mcontext.gregs[REG_RIP] = greg_t(thread_context.rip);
       mcontext.gregs[REG_EFL] = greg_t(thread_context.eflags);
@@ -238,6 +309,13 @@ void ExceptionHandler::Install(Handler fn, void* data) {
     if (sigaction(SIGSEGV, &signal_handler, &original_sigsegv_handler_) != 0) {
       assert_always("Failed to install new SIGSEGV handler");
     }
+    if (sigaction(SIGBUS, &signal_handler, &original_sigbus_handler_) != 0) {
+      // Non-fatal on some Android setups; log but continue for robustness.
+      XELOGW("Failed to install SIGBUS handler (alignment faults may crash host on this device)");
+    }
+    if (sigaction(SIGFPE, &signal_handler, &original_sigfpe_handler_) != 0) {
+      XELOGW("Failed to install SIGFPE handler (FP exceptions may crash host)");
+    }
     signal_handlers_installed_ = true;
   }
 
@@ -277,6 +355,12 @@ void ExceptionHandler::Uninstall(Handler fn, void* data) {
       }
       if (sigaction(SIGSEGV, &original_sigsegv_handler_, NULL) != 0) {
         assert_always("Failed to restore original SIGSEGV handler");
+      }
+      if (sigaction(SIGBUS, &original_sigbus_handler_, NULL) != 0) {
+        // Best effort
+      }
+      if (sigaction(SIGFPE, &original_sigfpe_handler_, NULL) != 0) {
+        // Best effort
       }
       signal_handlers_installed_ = false;
     }

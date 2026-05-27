@@ -1592,6 +1592,20 @@ void RenderTargetCache::ChangeOwnership(
         // just the latest host depth owner - the transfer source is expected to
         // be different than the destination.
         if (!transfer_source.IsEmpty() && transfer_source != dest) {
+          // Diagnostic: log depth<->color ownership type changes. This is the
+          // Xenia equivalent of PCSX2's InvalidateVideoMemType event. If this
+          // fires frequently during a shadow pass, it means eDRAM tiles are
+          // being claimed by the wrong surface type, which can corrupt shadow
+          // map data (tiles evicted from depth cache before the shadow sample).
+          if (transfer_source.is_depth != dest.is_depth) {
+            XELOGD(
+                "RenderTargetCache: eDRAM tiles [{}, {}) ownership type change: "
+                "{} base={} -> {} base={} (shadow map corruption candidate)",
+                it->first, std::min(it->second.end_tiles, extent_end),
+                transfer_source.is_depth ? "depth" : "color",
+                transfer_source.base_tiles,
+                dest.is_depth ? "depth" : "color", dest.base_tiles);
+          }
           uint32_t transfer_end_tiles =
               std::min(it->second.end_tiles, extent_end);
           if (!resolve_clear_cutout ||

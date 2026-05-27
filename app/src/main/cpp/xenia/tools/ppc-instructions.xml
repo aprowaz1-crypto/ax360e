@@ -576,6 +576,34 @@
     <out field="FPSCR" />
     <disasm>fsubs[Rc] [FD], [FA], [FB]</disasm>
   </insn>
+  <!-- ps_* arithmetic per R1 ps research report + in-tree PAIRED-SINGLE plan (Agent D scoped work).
+       Only the 3 foundational ops; psq/GQR/.s/indexed/mul/etc left for others. -->
+  <insn mnem="ps_addx"       opcode="1000002a" form="A"        group="f" desc="Paired Single Add">
+    <in field="FA" />
+    <in field="FB" />
+    <out field="FD" />
+    <out field="CR" conditional="true" />
+    <out field="FPSCR" />
+    <disasm>ps_add[Rc] [FD], [FA], [FB]</disasm>
+  </insn>
+  <insn mnem="ps_maddx"       opcode="1000003a" form="A"        group="f" desc="Paired Single Multiply-Add">
+    <in field="FA" />
+    <in field="FC" />
+    <in field="FB" />
+    <out field="FD" />
+    <out field="CR" conditional="true" />
+    <out field="FPSCR" />
+    <disasm>ps_madd[Rc] [FD], [FA], [FC], [FB]</disasm>
+  </insn>
+  <insn mnem="ps_msubx"       opcode="10000038" form="A"        group="f" desc="Paired Single Multiply-Subtract">
+    <in field="FA" />
+    <in field="FC" />
+    <in field="FB" />
+    <out field="FD" />
+    <out field="CR" conditional="true" />
+    <out field="FPSCR" />
+    <disasm>ps_msub[Rc] [FD], [FA], [FC], [FB]</disasm>
+  </insn>
   <insn mnem="icbi"         opcode="7c0007ac" form="X"        group="m" desc="Instruction Cache Block Invalidate">
     <in field="RA0" />
     <in field="RB" />

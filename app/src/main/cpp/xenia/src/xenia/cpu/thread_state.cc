@@ -28,6 +28,9 @@ thread_local ThreadState* thread_state_ = nullptr;
         ppc::PPCContext ctx;
     };
 
+    // Size auto-updates with net GQR placement (+32B uint32 near f[32] after
+    // consolidating late stub). R1 ps research infrastructure complete.
+    // See ppc_context.h (multiple citations to ppc_emit_fpu.cc plan block).
     static_assert(sizeof(PackedContext) == sizeof(ppc::PPCContext)+256);
 static void* AllocateContext() {
     PackedContext* ptr=memory::AlignedAlloc<PackedContext>(64);
@@ -58,6 +61,10 @@ ThreadState::ThreadState(Processor* processor, uint32_t thread_id,
   processor->backend()->InitializeBackendContext(context_);
   assert_true(((uint64_t)context_ & 0x3F) == 0);
   std::memset(context_, 0, sizeof(ppc::PPCContext));
+  // GQR[8] (uint32 at 0x220 after f[32]) zeroed here automatically. Per R1 ps
+  // research report (GQR state + basic infrastructure task). get_gqr/set_gqr +
+  // inline quantization helpers (no tables) now available. See ppc_context.h
+  // (R1 citations + plan block ref in ppc_emit_fpu.cc).
 
   // Stash pointers to common structures that callbacks may need.
   context_->global_mutex = &xe::global_critical_region::mutex();

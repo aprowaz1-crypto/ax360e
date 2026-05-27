@@ -121,4 +121,12 @@ public class Emulator {
 
     public native void notify_surface_changed();
 
+    // --- Centralized A64 backend diagnostics (new unhandled instr system) ---
+    /**
+     * Returns a human-readable summary of recently encountered unhandled
+     * HIR opcodes in the A64 CPU backend. Useful for on-device debugging
+     * of rare instructions without flooding logcat.
+     */
+    public native String getA64UnhandledReport();
+
 }

@@ -16,6 +16,9 @@
 #include "xenia/cpu/ppc/ppc_opcode_info.h"
 #include "xenia/cpu/ppc/ppc_translator.h"
 #include "xenia/cpu/processor.h"
+#include "xenia/kernel/xthread.h"  // for Reenter delivery of DEC 0x900
+
+#include "ax360e_perf_log.h"  // for CpuAccuracyTracker DEC underflow/reenter counters (Captain Agent 4)
 
 namespace xe {
 namespace cpu {
@@ -79,6 +82,59 @@ void LeaveGlobalLock(PPCContext* ppc_context, void* arg0, void* arg1) {
   global_mutex->unlock();
 }
 
+// Checks for a pending decrementer underflow. If dec_pending && EE enabled
+// (checked via global lock state / scratch) and not in critical section, then
+// deliver the 0x900 decrementer exception using the reenter mechanism (required
+// on Android a64 because C++ exceptions cannot cross JIT code).
+// Sets up minimal SRR0/SRR1 and vectors to (ivpr + 0x900).
+// This respects interrupt masking and global lock.
+void CheckDecrementerInterrupt(PPCContext* ppc_context, void* arg0, void* arg1) {
+  if (!ppc_context->dec_pending) {
+    return;
+  }
+
+  // Respect global interrupt lock (same as EE check in mfmsr).
+  auto global_mutex = reinterpret_cast<std::recursive_mutex*>(arg0);
+  auto global_lock_count = reinterpret_cast<int32_t*>(arg1);
+  std::lock_guard<std::recursive_mutex> lock(*global_mutex);
+  if (*global_lock_count != 0) {
+    // Interrupts disabled via global lock (mtmsr r13 pattern).
+    return;
+  }
+
+  // EE bit is effectively set when not locked (see CheckGlobalLock / mfmsr).
+  // Clear pending.
+  ppc_context->dec_pending = 0;
+
+  // Record underflow at actual delivery point (covers cases set in mfspr but delivered here).
+  ax360e::perf::g_cpu_accuracy.RecordDecUnderflowFired();
+  ax360e::perf::g_cpu_accuracy.RecordDecReentered();
+
+  // Save for proper exception context (SRR0 = "next" address, SRR1 = MSR image).
+  // POLISH (CAPTAIN DEC): SRR0 now documented as continuation (LR approx for JIT reenter
+  // delivery; future can use translator block PC capture for exact instr on 0x900).
+  // Tighter EE interaction handled by caller (global lock proxy). Reenter ensures correct target.
+  ppc_context->srr0 = ppc_context->lr;
+  // Simple MSR image (EE set + other common bits). Real impl would capture full MSR.
+  ppc_context->srr1 = 0x8000 | 0x2000;  // EE + RI-ish
+
+  // Compute vector target (standard PPC decrementer exception offset 0x900).
+  uint64_t vector_base = ppc_context->ivpr;
+  uint32_t target = static_cast<uint32_t>(vector_base + 0x900);
+
+  // Deliver via reenter (longjmp out of current JIT frame back to XThread::Execute
+  // loop, which will ExecuteRaw at the handler). This is the Android/a64-safe path.
+  // Kernel handlers expect the SRR0/SRR1 + appropriate IRQL etc.
+  if (auto* xthread = xe::kernel::XThread::GetCurrentThread()) {
+    // Clear pending again in case of races.
+    ppc_context->dec_pending = 0;
+    XELOGCPU("Delivering DEC exception to 0x{:08X} (ivpr=0x{:016X})", target, vector_base);
+    xthread->Reenter(target);
+  } else {
+    XELOGW("DEC interrupt pending but no current XThread for reentry");
+  }
+}
+
 void SyscallHandler(PPCContext* ppc_context, void* arg0, void* arg1) {
   uint64_t syscall_number = ppc_context->r[0];
   switch (syscall_number) {
@@ -101,6 +157,10 @@ bool PPCFrontend::Initialize() {
       processor_->DefineBuiltin("LeaveGlobalLock", LeaveGlobalLock, arg0, arg1);
   builtins_.syscall_handler = processor_->DefineBuiltin(
       "SyscallHandler", SyscallHandler, nullptr, nullptr);
+  builtins_.check_decrementer_interrupt = processor_->DefineBuiltin(
+      "CheckDecrementerInterrupt", CheckDecrementerInterrupt,
+      reinterpret_cast<void*>(&xe::global_critical_region::mutex()),
+      reinterpret_cast<void*>(&builtins_.global_lock_count));
   return true;
 }
 

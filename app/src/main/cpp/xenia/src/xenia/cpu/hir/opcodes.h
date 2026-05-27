@@ -44,6 +44,20 @@ enum CacheControlType {
   CACHE_CONTROL_TYPE_DATA_TOUCH_FOR_STORE,
   CACHE_CONTROL_TYPE_DATA_STORE,
   CACHE_CONTROL_TYPE_DATA_STORE_AND_FLUSH,
+  CACHE_CONTROL_TYPE_DATA_ZERO,   // dcbz / dcbz128 - allocate & zero cache line (no memory fetch)
+  CACHE_CONTROL_TYPE_INSTRUCTION_INVALIDATE,  // icbi - invalidate I-cache block (critical for SMC/JITs)
+};
+
+// Memory barrier types for finer-grained lowering while staying inside the
+// single existing OPCODE_MEMORY_BARRIER HIR instruction (using its flags word,
+// exactly like CacheControlType). This enables accurate emulation of Xenon's
+// weakly-ordered memory model on AArch64 without new opcodes.
+enum MemoryBarrierType {
+  MEMORY_BARRIER_TYPE_NONE = 0,
+  MEMORY_BARRIER_TYPE_FULL_SYNC,     // sync (L=0, hwsync) - heavyweight, cumulative, all observers
+  MEMORY_BARRIER_TYPE_LIGHT_SYNC,    // lwsync (L=1) - lightweight: orders ld-ld, ld-st, st-st (not st-ld)
+  MEMORY_BARRIER_TYPE_IO,            // eieio - orders cacheable stores + I/O (MMIO)
+  MEMORY_BARRIER_TYPE_INSTRUCTION,   // isync - context synchronizing + instruction fetch order
 };
 
 enum ArithmeticFlags {
@@ -279,6 +293,8 @@ enum Opcode {
   OPCODE_UNPACK,
   OPCODE_ATOMIC_EXCHANGE,
   OPCODE_ATOMIC_COMPARE_EXCHANGE,
+  OPCODE_LOAD_RESERVED,
+  OPCODE_STORE_RESERVED,
   OPCODE_SET_ROUNDING_MODE,
   __OPCODE_MAX_VALUE,  // Keep at end.
 };

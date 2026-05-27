@@ -285,14 +285,34 @@ void LaunchWebBrowser(const std::string_view url) {
 void LaunchFileExplorer(const std::filesystem::path& path) { assert_always(); }
 
 void ShowSimpleMessageBox(SimpleMessageBoxType type, std::string_view message) {
-  // TODO(Triang3l): Likely not needed much at all. ShowSimpleMessageBox is a
-  // concept pretty unfriendly to platforms like Android because it's blocking,
-  // and because it can be called from threads other than the UI thread. In the
-  // normal execution flow, dialogs should preferably be asynchronous, and used
-  // only in the UI thread. However, non-blocking messages may be good for error
-  // reporting - investigate the usage of Toasts with respect to threads, and
-  // aborting the process immediately after showing a Toast. For a Toast, the
-  // Java VM for the calling thread is needed.
+  // Robustness improvement for Android/A64: surface errors (unhandled instrs,
+  // guest crashes during accuracy work, FatalError calls) to Java UI via Toast
+  // and log. Non-blocking, works from any attached native thread.
+  JNIEnv* jni_env = GetAndroidThreadJniEnv();
+  if (!jni_env) {
+    // Fallback: at least log (already done by caller usually)
+    return;
+  }
+  jclass emulator_class = jni_env->FindClass("aenu/ax360e/Emulator");
+  if (!emulator_class) {
+    // Try base too
+    jni_env->ExceptionClear();
+    emulator_class = jni_env->FindClass("aenu/emulator/Emulator");
+  }
+  if (emulator_class) {
+    jmethodID on_error_mid = jni_env->GetStaticMethodID(
+        emulator_class, "onNativeEmulatorError",
+        "(Ljava/lang/String;I)V");
+    if (on_error_mid) {
+      jstring jmsg = jni_env->NewStringUTF(std::string(message).c_str());
+      int sev = (type == SimpleMessageBoxType::Error) ? 2 : 1;
+      jni_env->CallStaticVoidMethod(emulator_class, on_error_mid, jmsg, sev);
+      if (jmsg) jni_env->DeleteLocalRef(jmsg);
+    }
+    jni_env->DeleteLocalRef(emulator_class);
+  } else {
+    jni_env->ExceptionClear();
+  }
 }
 
 }  // namespace xe

@@ -201,6 +201,18 @@ class Exception {
     return access_violation_operation_;
   }
 
+  // ESR value from the signal context (if captured, AArch64 only).
+  // Useful on Android/AArch64 for synthesizing guest PPC FSR/DSISR bits for
+  // page faults (DSI), alignment faults (SIGBUS), and FP exceptions (SIGFPE).
+  // Returns 0 on other architectures or if ESR unavailable (older NDK).
+  uint32_t esr() const {
+#if XE_ARCH_ARM64
+    return thread_context_ ? thread_context_->esr : 0;
+#else
+    return 0;
+#endif
+  }
+
  private:
   Code code_ = Code::kInvalidException;
   HostThreadContext* thread_context_ = nullptr;

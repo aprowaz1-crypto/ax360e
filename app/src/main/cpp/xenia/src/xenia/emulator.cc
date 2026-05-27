@@ -734,6 +734,14 @@ bool Emulator::ExceptionCallback(Exception* ex) {
     return false;
   }
 
+  // Note (Android/A64 guest exception improvements): With expanded signal
+  // handling (SIGBUS for alignment, SIGFPE for FP, SIGSEGV page faults) and
+  // ESR capture in exception_handler_posix.cc, many faults that previously
+  // crashed the host now reach here with esr() available for FSR/DSISR synth
+  // in downstream guest exception delivery (Memory/MMIO/physical heaps/processor).
+  // This reduces host crashes and improves accuracy of guest-visible exceptions
+  // (DSI, alignment 0x600, FPU) on real Android devices.
+
   // Within range. Pause the emulator and eat the exception.
   Pause();
 
@@ -779,6 +787,13 @@ bool Emulator::ExceptionCallback(Exception* ex) {
           "A crash dump has been written into the log.");
     });
   }
+#if XE_PLATFORM_ANDROID || XE_PLATFORM_AX360E
+  // Surface to Java UI layer (Toast + logcat) for Android devices.
+  // Complements ImGui (which may not always be visible) and A64 unhandled paths.
+  xe::ShowSimpleMessageBox(xe::SimpleMessageBoxType::Error,
+      "Guest crash in A64 backend - see logcat for registers + PPC context. "
+      "Enable a64_accuracy_debug cvar for more diagnostics during dev.");
+#endif
 
   // Now suspend ourself (we should be a guest thread).
   current_thread->Suspend(nullptr);

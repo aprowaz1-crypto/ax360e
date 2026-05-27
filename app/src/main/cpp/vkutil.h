@@ -6,7 +6,7 @@
 #ifndef APS3E_VKUTIL_H
 #define APS3E_VKUTIL_H
 
-#include "vkapi.h"
+#include "vk_symbols.h"   // Shared Vulkan function pointer declarations
 #include <optional>
 #include <vector>
 

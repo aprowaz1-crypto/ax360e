@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Build;
-import android.os.Debug;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
@@ -14,7 +13,6 @@ import android.util.Log;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 
 public class PerformanceMonitor {
     private static final String TAG = "PerformanceMonitor";
@@ -41,15 +39,12 @@ public class PerformanceMonitor {
     }
 
     private final Context context;
-    private long lastCpuTime = 0;
-    private long lastAppCpuTime = 0;
-    private long lastUpdateTime = 0;
     
     // Performance metrics
     private float currentFps = 0;
     private float averageFps = 0;
-    private float cpuUsage = 0;
-    private float gpuUsage = 0;  // Estimated
+    private final float cpuUsage = 0;
+    private final float gpuUsage = 0;  // Estimated
     private long memoryUsed = 0;
     private long memoryTotal = 0;
     private float batteryLevel = 100;
@@ -72,50 +67,13 @@ public class PerformanceMonitor {
 
     public PerformanceMonitor(Context context) {
         this.context = context;
-        this.lastUpdateTime = SystemClock.elapsedRealtime();
     }
     
     public void updateMetrics() {
-        updateCpuUsage();
         updateMemoryUsage();
         updateBatteryLevel();
         updateThermalStatus();
-    }
-    
-    private void updateCpuUsage() {
-        try {
-            long currentTime = SystemClock.elapsedRealtime();
-            long elapsedTime = currentTime - lastUpdateTime;
-            
-            if (elapsedTime < 1000) return; // Update every second
-            
-            // Read /proc/stat for total CPU time
-            String load;
-            try (RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r")) {
-                load = reader.readLine();
-            }
-            
-            String[] toks = load.split(" +");
-            long idle = Long.parseLong(toks[4]);
-            long cpu = Long.parseLong(toks[1]) + Long.parseLong(toks[2]) + Long.parseLong(toks[3]);
-            long total = idle + cpu;
-            
-            if (lastCpuTime > 0) {
-                long cpuDiff = total - lastCpuTime;
-                long appDiff = (long) (Debug.threadCpuTimeNanos() / 1000000);
-                
-                if (cpuDiff > 0) {
-                    cpuUsage = (float) (appDiff - lastAppCpuTime) / cpuDiff * 100;
-                    cpuUsage = Math.max(0, Math.min(100, cpuUsage));
-                }
-            }
-            
-            lastCpuTime = total;
-            lastAppCpuTime = (long) (Debug.threadCpuTimeNanos() / 1000000);
-            lastUpdateTime = currentTime;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to read CPU usage", e);
-        }
+        updateCpuAccuracyMetrics();  // pulls reservation/timebase/unhandled stats from native CPU backend
     }
     
     private void updateMemoryUsage() {
@@ -213,6 +171,9 @@ public class PerformanceMonitor {
     
     public long getGmemFlushes() { return gmemFlushes; }
     public long getFsiOverhead() { return fsiOverhead; }
+
+    // CPU accuracy metrics (populated on demand from native)
+    private String lastCpuAccuracyReport = "CPU metrics not yet fetched";
     
     public String getFormattedMemoryUsage() {
         float usedMB = memoryUsed / (1024.0f * 1024.0f);
@@ -226,6 +187,25 @@ public class PerformanceMonitor {
                 isThermalThrottling ? " (Throttling)" : "");
         }
         return "Unknown";
+    }
+
+    /**
+     * Fetch latest CPU accuracy metrics from native (reservations, unhandled instrs, timebase, etc.).
+     * Call periodically alongside other updates. The native side also logs periodically.
+     */
+    public void updateCpuAccuracyMetrics() {
+        if (Emulator.get != null) {
+            try {
+                lastCpuAccuracyReport = Emulator.get.get_cpu_accuracy_metrics();
+                Log.d(TAG, "CPU accuracy: " + lastCpuAccuracyReport);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to fetch CPU accuracy metrics", e);
+            }
+        }
+    }
+
+    public String getLastCpuAccuracyReport() {
+        return lastCpuAccuracyReport;
     }
     
     public boolean shouldReduceQuality() {
@@ -302,6 +282,85 @@ public class PerformanceMonitor {
             } catch (Exception e) {
                 Log.e(TAG, "Failed to push metrics to native", e);
             }
+        }
+    }
+
+    /**
+     * CAPTAIN DIRECT ORDER - trigger for 128B reservation stress + false-share test harness.
+     * Exposes the cvar-driven debug validation sequences (from a64_backend / a64_seq_memory)
+     * to Java side (PerformanceMonitor or hidden dev settings / diagnostics UI).
+     *
+     * Sequences exercised:
+     *   - Thread A lwarx at X (128B granule)
+     *   - Crossing ordinary stw to X+64 or X+127 (verifies ClearXenonReservationIfStoreOverlaps clears it)
+     *   - V128 wide store analogs
+     *   - Results: logs with exact research citations + increments crossing_invalidation_tests + false_share_detected
+     *     (visible via getLastCpuAccuracyReport / PERF_TAG and get_cpu_accuracy_metrics).
+     *
+     * Research citations (embedded in native harness):
+     *   Real Xenon 128B reservation granule + per-thread pairing errata.
+     *   Normal stores must invalidate (the landed helper).
+     *   False sharing at 128B boundaries real risk for audio + physics lock-free cross-core code.
+     *
+     * Call from dev UI / hidden setting when a64_accuracy_debug is desired on Adreno to
+     * prove the 128B invalidation research-to-code is solid and trustworthy on device.
+     * Lightweight, reuses existing metrics + cvar + logging infrastructure.
+     */
+    public void trigger128BReservationStressTest() {
+        if (Emulator.get != null) {
+            try {
+                Emulator.get.trigger_128b_reservation_stress_test();
+                Log.i(TAG, "128B reservation stress harness triggered (crossing stores / false share validation). "
+                           + "See CPU_ACCURACY logs for cross_128b_inv + false_share_128b + research citations.");
+                // Optionally refresh metrics snapshot immediately after harness run
+                updateCpuAccuracyMetrics();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to trigger 128B reservation stress harness", e);
+            }
+        } else {
+            Log.w(TAG, "Emulator not available - cannot trigger 128B stress harness");
+        }
+    }
+
+    /**
+     * R1 (original paired-single / ps_* research report author) + CAPTAIN DIRECT ORDER.
+     * Java-side trigger for the lightweight ps accuracy validation harness (a64_ps_accuracy_stress).
+     * Exact mirror of trigger128BReservationStressTest pattern.
+     *
+     * On call (from hidden dev setting / diagnostics UI):
+     *   - Invokes native RunPairedSingleAccuracyHarness via JNI.
+     *   - Exercises: ps_maddx (FMA on known values - highest priority per R1 for UE3/Forza/Halo
+     *     vertex/skin/anim/physics), ps_addx/ps_msubx, basic psq quant roundtrips (GQR), NaN/denorm
+     *     edges, and psq_st 128B reservation granule invalidation stress (the *explicit* warning
+     *     in the 55-tool R1 report: psq_st stores must hit ClearXenon... or atomicity breaks in
+     *     real titles mixing lockfree + quantized data).
+     *   - R1 AUTHOR ENRICH (CAPTAIN RE-TASK): now also title-derived ps_madd skin/phys/vtx patterns,
+     *     realistic GQR VBO roundtrips (real helpers from ppc_context), expanded psq_st+128B false-share
+     *     + lock-free CAS + lwsync combos, + additional per-element NaN/denorm/rounding/FPCR edges
+     *     (mixed ps0/ps1, SNaN payload, ties, FZ/DN, overflow) with 2 new counters.
+     *   - Increments + surfaces: ps_arith_executed, ps_fma_cases, psq_load_store_count,
+     *     ps_nan_denorm_edge_hits + NEW ps_mixed_element_edges/ps_rounding_edges in CPU_ACCURACY snapshot (get_cpu_accuracy_metrics) + PERF_TAG logcat.
+     *
+     * Also auto-runs at A64Backend init when cvar set (same as 128B).
+     * Research anchors: R1 ps report priorities + GQR + 128B psq_st interaction notes (see
+     * a64_backend.cc RunPairedSingle... + ppc_emit_fpu.cc plan + a64_seq_memory STORE_F* comments).
+     *
+     * Captain/devs: while ps_* fleet agents land emitters, flip a64_ps_accuracy_stress + a64_accuracy_debug
+     * on real Adreno device and trigger here to immediately validate results.
+     */
+    public void triggerPSAccuracyStressTest() {
+        if (Emulator.get != null) {
+            try {
+                Emulator.get.trigger_ps_accuracy_stress_test();
+                Log.i(TAG, "PS_* (paired-single) accuracy stress harness triggered (R1 research author / harness owner). "
+                           + "ENRICHED: title ps_madd + real GQR VBO + psq+lockfree+lwsync + extra per-elem FPCR edges (new counters). "
+                           + "See CPU_ACCURACY for all ps_* + research citations.");
+                updateCpuAccuracyMetrics();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to trigger PS accuracy stress harness", e);
+            }
+        } else {
+            Log.w(TAG, "Emulator not available - cannot trigger PS accuracy stress harness");
         }
     }
 

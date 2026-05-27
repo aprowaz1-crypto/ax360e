@@ -620,6 +620,47 @@ int InstrEmit_mfspr(PPCHIRBuilder& f, const InstrData& i) {
       // TBU
       v = f.Shr(f.LoadClock(), 32);
       break;
+    case 63:
+      // IVPR (exception vector base) - read for DEC and other exceptions.
+      v = f.LoadContext(offsetof(PPCContext, ivpr), INT64_TYPE);
+      break;
+    case 912: case 913: case 914: case 915:
+    case 916: case 917: case 918: case 919:
+      // GQR0..GQR7 basic read path (SPR 912+). Per ps_* plan in ppc_emit_fpu.cc.
+      // Enables future psq_l/psq_st quantized loads (GQR holds scale + format).
+      // Stored as uint64 in context (high bits zero); return as 64-bit SPR value.
+      {
+        uint32_t gqr_index = n - 912;
+        Value* g = f.LoadContext(offsetof(PPCContext, gqr) + (gqr_index * sizeof(uint64_t)), INT64_TYPE);
+        v = g;
+      }
+      break;
+    case 22:
+      // DEC - decrementer. Compute current value based on elapsed guest ticks
+      // since last mtspr for high fidelity timer emulation.
+      // Also set dec_pending if we have crossed the fire time (for exception delivery).
+      // POLISH (CAPTAIN DEC TIMING): improved underflow (exact 0 treated as immediate
+      // fire for negative/underflow case; UGE on fire_time for normal countdown).
+      // Tighter with EE via the Check builtin. SRR0 set in delivery path (see frontend).
+      // References timing precision research + high-quality LoadClock/atomic TB work.
+      {
+        Value* now = f.LoadClock();
+        Value* fire_time = f.LoadContext(offsetof(PPCContext, dec_fire_time), INT64_TYPE);
+        Value* value = f.LoadContext(offsetof(PPCContext, dec_value), INT64_TYPE);
+        Value* is_zero = f.CompareEQ(value, f.LoadZeroInt64());
+        Value* is_fired = f.Or(f.CompareUGE(now, fire_time), is_zero);
+        // Store pending (as 32-bit friendly via low bits of 64-bit store)
+        f.StoreContext(offsetof(PPCContext, dec_pending), f.Select(is_fired, f.LoadConstantUint64(1), f.LoadZeroInt64()));
+        // Accuracy counter for underflow (fired when mfdec detects cross or zero write).
+        // (Note: HIR path; actual Record* called from native paths like LoadClock/ delivery for counts.)
+        // For full native count see sequences + frontend reenter.
+        Value* tb_set = f.LoadContext(offsetof(PPCContext, dec_tb_at_write), INT64_TYPE);
+        Value* elapsed = f.Sub(now, tb_set);
+        // remaining = max(0, written - elapsed); underflow clamps at 0 (negative handled via fire)
+        Value* remaining = f.Select(f.CompareUGT(value, elapsed), f.Sub(value, elapsed), f.LoadZeroInt64());
+        v = remaining;
+      }
+      break;
     case 287:
       // [ Processor Version Register (PVR) ]
       // PVR is a 32 bit, read-only register within the supervisor level.
@@ -716,6 +757,34 @@ int InstrEmit_mtspr(PPCHIRBuilder& f, const InstrData& i) {
     case 256:
       // VRSAVE
       break;
+    case 63:
+      // IVPR - store vector base (used for DEC 0x900 delivery etc).
+      f.StoreContext(offsetof(PPCContext, ivpr), rt);
+      break;
+    case 912: case 913: case 914: case 915:
+    case 916: case 917: case 918: case 919:
+      // GQR0..GQR7 basic write path (SPR 912+). Per ps_* plan in ppc_emit_fpu.cc.
+      // Allows guest init of quantization regs before psq_* (even if emitters later).
+      {
+        uint32_t gqr_index = n - 912;
+        // Truncate to 32-bit semantics for the SPR (upper bits ignored on real hw).
+        Value* val32 = f.Truncate(rt, INT32_TYPE);
+        f.StoreContext(offsetof(PPCContext, gqr) + (gqr_index * sizeof(uint64_t)), f.ZeroExtend(val32, INT64_TYPE));
+      }
+      break;
+    case 22:
+      // DEC - record written value + current timebase for accurate countdown
+      // emulation. This enables timing-sensitive games to use decrementer
+      // interrupts and polled mfdec with correct fidelity to guest ticks.
+      // Also cache the absolute fire tick (now + value) for fast pending checks.
+      // POLISH (CAPTAIN + Agent 3 timing): handle write of 0 as immediate underflow fire.
+      f.StoreContext(offsetof(PPCContext, dec_value), rt);
+      Value* now = f.LoadClock();
+      f.StoreContext(offsetof(PPCContext, dec_tb_at_write), now);
+      Value* fire_time = f.Add(now, rt);
+      f.StoreContext(offsetof(PPCContext, dec_fire_time), fire_time);
+      f.StoreContext(offsetof(PPCContext, dec_pending), f.LoadZeroInt64());  // clear pending on new set
+      break;
     default:
       XEINSTRNOTIMPLEMENTED();
       return 1;
@@ -733,7 +802,7 @@ int InstrEmit_mfmsr(PPCHIRBuilder& f, const InstrData& i) {
   // bit 48 = EE; interrupt enabled
   // bit 62 = RI; recoverable interrupt
   // return 8000h if unlocked (interrupts enabled), else 0
-  f.MemoryBarrier();
+  f.MemoryBarrier(MEMORY_BARRIER_TYPE_FULL_SYNC);
   f.CallExtern(f.builtins()->check_global_lock);
   f.StoreGPR(i.X.RT, f.LoadContext(offsetof(PPCContext, scratch), INT64_TYPE));
   return 0;
@@ -743,7 +812,7 @@ int InstrEmit_mtmsr(PPCHIRBuilder& f, const InstrData& i) {
   if (i.X.RA & 0x01) {
     // L = 1
     // iff storing from r13
-    f.MemoryBarrier();
+    f.MemoryBarrier(MEMORY_BARRIER_TYPE_FULL_SYNC);
     f.StoreContext(
         offsetof(PPCContext, scratch),
         f.ZeroExtend(f.ZeroExtend(f.LoadGPR(i.X.RT), INT64_TYPE), INT64_TYPE));
@@ -757,6 +826,9 @@ int InstrEmit_mtmsr(PPCHIRBuilder& f, const InstrData& i) {
       if (!cvars::disable_global_lock) {
         f.CallExtern(f.builtins()->leave_global_lock);
       }
+      // After re-enabling interrupts (leaving lock), check for pending DEC.
+      // This is a primary delivery point for 0x900 when EE becomes set.
+      f.CallExtern(f.builtins()->check_decrementer_interrupt);
     }
     return 0;
   } else {
@@ -769,7 +841,7 @@ int InstrEmit_mtmsr(PPCHIRBuilder& f, const InstrData& i) {
 int InstrEmit_mtmsrd(PPCHIRBuilder& f, const InstrData& i) {
   if (i.X.RA & 0x01) {
     // L = 1
-    f.MemoryBarrier();
+    f.MemoryBarrier(MEMORY_BARRIER_TYPE_FULL_SYNC);
     f.StoreContext(offsetof(PPCContext, scratch),
                    f.ZeroExtend(f.LoadGPR(i.X.RT), INT64_TYPE));
     if (i.X.RT == 13) {
@@ -782,6 +854,8 @@ int InstrEmit_mtmsrd(PPCHIRBuilder& f, const InstrData& i) {
       if (!cvars::disable_global_lock) {
         f.CallExtern(f.builtins()->leave_global_lock);
       }
+      // After re-enabling interrupts (leaving lock), check for pending DEC.
+      f.CallExtern(f.builtins()->check_decrementer_interrupt);
     }
     return 0;
   } else {
