@@ -8,6 +8,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.util.Log;
+import android.view.ViewGroup;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
@@ -41,6 +44,10 @@ public class EmulatorSettings extends AppCompatActivity {
     static final String KEY_CUSTOM_DRIVER_LOAD_TYPE="CustomDrivers|load_driver_type";
     static final String KEY_CUSTOM_DRIVER_GPU="CustomDrivers|gpu_driver";
     static final String KEY_CUSTOM_DRIVER_GPU_REMOVE="CustomDrivers|gpu_driver_remove";
+    // p3-5: Quick actions and live libadrenotools indicator keys
+    static final String KEY_DRIVER_LOADER_INDICATOR="CustomDrivers|driver_loader_indicator";
+    static final String KEY_VIEW_DRIVER_STATUS="CustomDrivers|view_driver_status";
+    static final String KEY_REFRESH_DRIVER_STATE="CustomDrivers|refresh_driver_state";
     static final String KEY_MANAGE_PATCHES="Patches|manage_patches";
 
     // Advanced settings keys
@@ -384,6 +391,7 @@ public class EmulatorSettings extends AppCompatActivity {
                     "GPU|log_guest_driven_gpu_register_written_values",
                     "GPU|trace_gpu_stream",
                     "GPU|force_convert_quad_lists_to_triangle_lists",
+                    "GPU|force_s3tc_software_decode",
                     "GPU|ignore_32bit_vertex_index_support",
                     "GPU|execute_unclipped_draw_vs_on_cpu_with_scissor",
                     "GPU|mrt_edram_used_range_clamp_to_min",
@@ -434,9 +442,14 @@ public class EmulatorSettings extends AppCompatActivity {
 
                     // Advanced Turnip settings
                     "TurnipAdvanced|gmem_mode",
+                    "TurnipAdvanced|sysmem_mode",
+                    "TurnipAdvanced|nolrz",
                     "TurnipAdvanced|ubwc_flag_hint",
                     "TurnipAdvanced|debug_logging",
                     "TurnipAdvanced|noubwc",
+                    "TurnipAdvanced|forcebin",
+                    "TurnipAdvanced|noflush",
+                    "TurnipAdvanced|novsc",
 
                     // Performance Monitoring
                     "PerfMonitoring|show_gmem_stats",
@@ -452,6 +465,7 @@ public class EmulatorSettings extends AppCompatActivity {
                     // Power Management
                     "PowerManagement|background_unload",
                     "PowerManagement|low_memory_mode",
+                    "Performance|force_max_clocks",
             };
             final String[] INT_KEYS={
                     "Memory|mmap_address_high",
@@ -582,6 +596,8 @@ public class EmulatorSettings extends AppCompatActivity {
 
             setup_custom_driver_type(null);
             setup_custom_driver_gpu(null);
+            // p3-5: Initial population of live loader indicator + any driver info summary
+            refreshDriverLiveState();
 
             for (String key:NODE_KEYS){
                 PreferenceScreen pref=findPreference(key);
@@ -597,6 +613,13 @@ public class EmulatorSettings extends AppCompatActivity {
             Preference custom_driver_gpu_remove_pref=findPreference(KEY_CUSTOM_DRIVER_GPU_REMOVE);
             if(custom_driver_gpu_remove_pref!=null)
                 custom_driver_gpu_remove_pref.setOnPreferenceClickListener(this);
+            // p3-5 quick actions wiring
+            Preference viewStatusPref = findPreference(KEY_VIEW_DRIVER_STATUS);
+            if (viewStatusPref != null)
+                viewStatusPref.setOnPreferenceClickListener(this);
+            Preference refreshStatePref = findPreference(KEY_REFRESH_DRIVER_STATE);
+            if (refreshStatePref != null)
+                refreshStatePref.setOnPreferenceClickListener(this);
             Preference manage_patches_pref=findPreference(KEY_MANAGE_PATCHES);
             if(manage_patches_pref!=null)
                 manage_patches_pref.setOnPreferenceClickListener(this);
@@ -645,6 +668,14 @@ public class EmulatorSettings extends AppCompatActivity {
                 original_config.close_config();
         }
 
+        @Override
+        public void onResume() {
+            super.onResume();
+            // p3-5 Settings Integration Polish: live updates for Custom GPU Driver summaries + indicators
+            // when returning to settings after emulator runs, driver changes, or external state shifts.
+            refreshDriverLiveState();
+        }
+
         /*@Override
         public boolean onPreferenceChange(Preference preference, Object newValue) {
             Log.i("onPreferenceChange",preference.getKey()+" "+newValue);
@@ -669,6 +700,20 @@ public class EmulatorSettings extends AppCompatActivity {
 
             if(KEY_CUSTOM_DRIVER_GPU_REMOVE.equals(preference.getKey())){
                 remove_custom_driver_gpu();
+                return true;
+            }
+
+            // p3-5 quick actions: View Full Status reuses the rich Driver Info flow (improved access from GPU area)
+            if (KEY_VIEW_DRIVER_STATUS.equals(preference.getKey())) {
+                show_turnip_driver_info();
+                return true;
+            }
+
+            // p3-5: Refresh directly updates all driver summaries/indicators from live TurnipDriverInfo + natives
+            if (KEY_REFRESH_DRIVER_STATE.equals(preference.getKey())) {
+                refreshDriverLiveState();
+                String shortStatus = getShortDriverStatus();
+                Toast.makeText(requireContext(), getString(R.string.driver_state_refreshed) + (shortStatus.isEmpty() ? "" : "\n" + shortStatus), Toast.LENGTH_SHORT).show();
                 return true;
             }
 
@@ -773,11 +818,27 @@ public class EmulatorSettings extends AppCompatActivity {
         void setup_custom_driver_gpu(android.net.Uri uri){
             Preference gpu_pref=findPreference(KEY_CUSTOM_DRIVER_GPU);
             if(uri == null){
-                // Determine if driver is installed and show its name
+                // p3-5: ALWAYS reflect live runtime state using fresh TurnipDriverInfo (natives: isUsingLibadrenotools, isActiveInProcess, detailed status)
                 TurnipDriverInfo driverInfo = TurnipDriverInfo.detect(requireContext());
                 if (driverInfo.isInstalled()) {
                     if (gpu_pref != null) {
-                        gpu_pref.setSummary("Installed: " + driverInfo.getDriverName() + " (" + driverInfo.getDriverVersion() + ")");
+                        String summary = driverInfo.getDriverName() + " (" + driverInfo.getDriverVersion() + ")";
+                        if (driverInfo.isUsingLibadrenotools()) {
+                            // Subtle modern path indicator
+                            summary += " • libadrenotools ✓";
+                            if (driverInfo.isActiveInProcess()) {
+                                summary += " ACTIVE";
+                            } else {
+                                summary += " (installed, not yet active in process)";
+                            }
+                        } else if (driverInfo.isActiveInProcess()) {
+                            // Legacy indicator with guidance
+                            summary += " • legacy loader (migrate to libadrenotools recommended)";
+                        } else {
+                            summary += " (installed, not loaded)";
+                        }
+                        // Prefix for clarity in settings list
+                        gpu_pref.setSummary("Installed: " + summary);
                     }
                 } else {
                     if (gpu_pref != null) gpu_pref.setSummary(getString(R.string.es_hint_custom_drivers_gpu));
@@ -787,11 +848,20 @@ public class EmulatorSettings extends AppCompatActivity {
 
             boolean success = CustomDriverUtils.installDriver(requireContext(), uri);
             if (success) {
+                // p3-5: Post-install also force fresh live detect for summary
                 TurnipDriverInfo driverInfo = TurnipDriverInfo.detect(requireContext());
                 if (gpu_pref != null) {
-                    gpu_pref.setSummary("Installed: " + driverInfo.getDriverName() + " (" + driverInfo.getDriverVersion() + ")");
+                    String summary = driverInfo.getDriverName() + " (" + driverInfo.getDriverVersion() + ")";
+                    if (driverInfo.isUsingLibadrenotools()) {
+                        summary += " • libadrenotools ✓";
+                    } else {
+                        summary += " (legacy path)";
+                    }
+                    gpu_pref.setSummary("Installed: " + summary);
                 }
-                Toast.makeText(requireContext(), getString(R.string.custom_driver_installed_success), Toast.LENGTH_SHORT).show();
+                // p3-3: More informative success feedback (activation often requires restart / next launch)
+                String successMsg = getString(R.string.custom_driver_installed_success) + ". Restart app or launch a game to activate.";
+                Toast.makeText(requireContext(), successMsg, Toast.LENGTH_LONG).show();
             } else {
                 String failureReason = CustomDriverUtils.getLastDriverError();
                 if (gpu_pref != null) {
@@ -799,11 +869,43 @@ public class EmulatorSettings extends AppCompatActivity {
                             ? "Driver import failed: " + failureReason
                             : getString(R.string.es_hint_custom_drivers_gpu));
                 }
-                String toastMessage = getString(R.string.custom_driver_installed_failed);
+
+                // p3-3: Richer failure feedback - query native detailed status (post-install load attempt) + actionable steps
+                String detailed = null;
+                try {
+                    detailed = Emulator.nativeGetDetailedDriverStatus();
+                } catch (Throwable ignored) {}
+
+                StringBuilder toastOrDialogMsg = new StringBuilder();
+                toastOrDialogMsg.append(getString(R.string.custom_driver_installed_failed));
                 if (failureReason != null && !failureReason.isEmpty()) {
-                    toastMessage += ": " + failureReason;
+                    toastOrDialogMsg.append(": ").append(failureReason);
                 }
-                Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show();
+                toastOrDialogMsg.append("\n\n");
+
+                if (detailed != null && !detailed.isEmpty() && !detailed.contains("No custom driver status")) {
+                    toastOrDialogMsg.append("Native loader status: ").append(detailed).append("\n\n");
+                }
+
+                toastOrDialogMsg.append("QUICK FIXES:\n");
+                toastOrDialogMsg.append("• Verify the ZIP contains a valid vulkan_*.so + meta.json\n");
+                toastOrDialogMsg.append("• Remove the driver and try re-installing\n");
+                toastOrDialogMsg.append("• Restart app after fixing\n");
+                toastOrDialogMsg.append("• Check Driver Information dialog for full details");
+
+                final String fullFailureMsg = toastOrDialogMsg.toString();
+
+                // Use dialog for complex/verbose errors (contains ERROR or long), otherwise long toast
+                if (fullFailureMsg.contains("ERROR") || fullFailureMsg.length() > 160) {
+                    new AlertDialog.Builder(requireContext())
+                        .setTitle("Driver Install Failed")
+                        .setMessage(fullFailureMsg)
+                        .setPositiveButton(getString(R.string.driver_info), (d, w) -> show_turnip_driver_info())
+                        .setNegativeButton("OK", null)
+                        .show();
+                } else {
+                    Toast.makeText(requireContext(), fullFailureMsg, Toast.LENGTH_LONG).show();
+                }
             }
         }
 
@@ -823,7 +925,82 @@ public class EmulatorSettings extends AppCompatActivity {
             if (gpu_pref != null) {
                 gpu_pref.setSummary(getString(R.string.es_hint_custom_drivers_gpu));
             }
+            // p3-5: Refresh indicator + other driver UI to reflect removal (live state)
+            refreshDriverLiveState();
             Toast.makeText(requireContext(), getString(R.string.custom_driver_removed), Toast.LENGTH_SHORT).show();
+        }
+
+        // p3-5: Core live refresh used by onResume, quick action, install/remove, initial create.
+        // Guarantees Custom GPU summary + loader indicator always match current TurnipDriverInfo + native queries.
+        void refreshDriverLiveState() {
+            setup_custom_driver_gpu(null);  // re-detects + rewrites GPU pref summary with live runtime flags
+            updateDriverLoaderIndicator();
+            // Also keep Driver Information (in advanced) summary fresh if present
+            updateTurnipDriverInfoPrefSummary();
+        }
+
+        void updateDriverLoaderIndicator() {
+            Preference indicator = findPreference(KEY_DRIVER_LOADER_INDICATOR);
+            if (indicator == null) return;
+
+            try {
+                TurnipDriverInfo info = TurnipDriverInfo.detect(requireContext());
+                boolean buildSupports = false;
+                try {
+                    buildSupports = Emulator.nativeSupportsLibadrenotoolsBuild();
+                } catch (Throwable ignored) {}
+
+                String base;
+                if (info.isInstalled() && info.isUsingLibadrenotools()) {
+                    base = getString(R.string.driver_loader_path_modern);
+                } else if (info.isActiveInProcess()) {
+                    base = getString(R.string.driver_loader_path_legacy);
+                } else {
+                    base = getString(R.string.driver_loader_path_none);
+                }
+
+                String supportNote = buildSupports ?
+                        getString(R.string.driver_loader_build_support) :
+                        getString(R.string.driver_loader_build_no_support);
+
+                indicator.setSummary(base + supportNote);
+            } catch (Throwable t) {
+                indicator.setSummary("Loader status unavailable");
+            }
+        }
+
+        void updateTurnipDriverInfoPrefSummary() {
+            Preference infoPref = findPreference(KEY_TURNIP_DRIVER_INFO);
+            if (infoPref == null) return;
+            try {
+                TurnipDriverInfo di = TurnipDriverInfo.detect(requireContext());
+                String s;
+                if (!di.isInstalled()) {
+                    s = getString(R.string.driver_summary_no_driver);
+                } else if (di.isUsingLibadrenotools()) {
+                    s = di.isActiveInProcess() ? getString(R.string.driver_summary_libadrenotools_active) : getString(R.string.driver_summary_libadrenotools_inactive);
+                } else if (di.isActiveInProcess()) {
+                    s = getString(R.string.driver_summary_legacy);
+                } else {
+                    s = getString(R.string.driver_summary_inactive);
+                }
+                infoPref.setSummary(s);
+            } catch (Throwable t) {
+                infoPref.setSummary(getString(R.string.driver_summary_default));
+            }
+        }
+
+        String getShortDriverStatus() {
+            try {
+                TurnipDriverInfo di = TurnipDriverInfo.detect(requireContext());
+                if (!di.isInstalled()) return getString(R.string.driver_badge_no_custom);
+                if (di.isUsingLibadrenotools() && di.isActiveInProcess()) return getString(R.string.driver_status_libadrenotools_active);
+                if (di.isUsingLibadrenotools()) return getString(R.string.driver_status_libadrenotools_not_active);
+                if (di.isActiveInProcess()) return getString(R.string.driver_status_legacy);
+                return getString(R.string.driver_status_installed_inactive);
+            } catch (Throwable t) {
+                return "";
+            }
         }
 
         void open_custom_driver_type_editor(){
@@ -834,27 +1011,47 @@ public class EmulatorSettings extends AppCompatActivity {
         }
 
         void show_turnip_driver_info() {
-            TurnipDriverInfo driverInfo = TurnipDriverInfo.detect(requireContext());
+            // p3-2: Fresh detect on every open (and on Refresh) ensures up-to-date info
+            final TurnipDriverInfo[] currentInfo = new TurnipDriverInfo[1];
+            currentInfo[0] = TurnipDriverInfo.detect(requireContext());
 
-            String message;
-            if (driverInfo.isInstalled()) {
-                message = "Turnip Driver Detected\n\n" +
-                         "Driver: " + driverInfo.getDriverName() + "\n" +
-                         "Version: " + driverInfo.getDriverVersion() + "\n" +
-                         "Mesa Version: " + driverInfo.getMesaVersion() + "\n\n" +
-                         driverInfo.getFormattedInfo();
-            } else {
-                message = "No custom Turnip driver detected.\n\n" +
-                         "To install a custom Turnip driver:\n" +
-                         "1. Go to Custom Drivers settings\n" +
-                         "2. Select 'Install GPU Driver'\n" +
-                         "3. Choose a Turnip driver ZIP file";
-            }
+            final String[] currentReport = new String[1];
+            currentReport[0] = currentInfo[0].getRichDriverReport(requireContext());
+
+            // Custom scrollable + selectable content view for polished formatting (sections, emojis, hierarchy)
+            final ScrollView scrollView = new ScrollView(requireContext());
+            final TextView contentView = new TextView(requireContext());
+            contentView.setText(currentReport[0]);
+            contentView.setTextIsSelectable(true);
+            contentView.setPadding(32, 24, 32, 24);
+            contentView.setTextSize(14f);
+            scrollView.addView(contentView, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            scrollView.setPadding(0, 0, 0, 0);
 
             new AlertDialog.Builder(requireContext())
-                    .setTitle("Turnip Driver Information")
-                    .setMessage(message)
-                    .setPositiveButton(android.R.string.ok, null)
+                    .setTitle(getString(R.string.turnip_driver_info_title))
+                    .setView(scrollView)
+                    // Prominent primary action: Copy (rightmost positive button)
+                    .setPositiveButton(getString(R.string.copy_to_clipboard), (dialog, which) -> {
+                        try {
+                            android.content.ClipboardManager clipboard =
+                                    (android.content.ClipboardManager) requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("Turnip Driver Info", currentReport[0]);
+                            clipboard.setPrimaryClip(clip);
+                            Toast.makeText(requireContext(), getString(R.string.driver_info_copied), Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Toast.makeText(requireContext(), getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
+                        }
+                        // Keep dialog open so user can continue viewing or refresh
+                    })
+                    // Refresh provides "live update" experience: re-detect + reopen dialog with fresh data
+                    .setNeutralButton(getString(R.string.refresh), (dialog, which) -> {
+                        ((androidx.appcompat.app.AlertDialog) dialog).dismiss();
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(this::show_turnip_driver_info);
+                    })
+                    .setNegativeButton(getString(R.string.close), null)
                     .create().show();
         }
 
@@ -987,8 +1184,10 @@ public class EmulatorSettings extends AppCompatActivity {
                     Log.w("EmulatorSettings", "Failed to persist custom driver URI permission: " + uri, e);
                 }
             }
-            if (fragment!=null && uri != null)
-                fragment.setup_custom_driver_gpu(uri);
+            if (fragment!=null && uri != null) {
+                // p3-5: Use full live refresh so GPU summary + loader indicator + advanced info summary all update together post-install
+                fragment.refreshDriverLiveState();
+            }
         }
     }
 }

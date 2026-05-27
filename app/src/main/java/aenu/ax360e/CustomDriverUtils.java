@@ -25,19 +25,7 @@ public class CustomDriverUtils {
 
     private static final String TAG = "CustomDriverUtils";
     private static final String DRIVER_DIR_NAME = "custom_drivers";
-    private static final String ANDROID_STUB_DIR_NAME = "android_stub";
-    private static final String[] ANDROID_STUB_LIBRARIES = {
-            "libcutils.so",
-            "libhardware.so",
-            "libutils.so",
-            "libhidlbase.so",
-            "libsync.so",
-            "libnativewindow.so",
-            "libandroid.so",
-            "libbacktrace.so",
-            "libunwindstack.so",
-            "liblog.so"
-    };
+    // Old stub library logic has been completely removed (libadrenotools migration)
     private static volatile String lastDriverError = "";
     // Decompression bomb limits to prevent OOM from malicious zip files
     private static final long MAX_TOTAL_UNCOMPRESSED_SIZE = 100 * 1024 * 1024; // 100MB total
@@ -171,6 +159,18 @@ public class CustomDriverUtils {
         return lastDriverError;
     }
 
+    /**
+     * Returns the directory where the custom driver is installed.
+     * This is the preferred path for libadrenotools-based loading.
+     */
+    public static String getCustomDriverDirectory(Context context) {
+        File dir = getDriverDirectory(context);
+        if (isDriverInstalled(context)) {
+            return dir.getAbsolutePath();
+        }
+        return null;
+    }
+
     private static void generateIcdManifest(File dir, String soName) throws IOException, JSONException {
         File soFile = new File(dir, soName);
         File jsonFile = new File(dir, "vk_icd.json");
@@ -202,28 +202,47 @@ public class CustomDriverUtils {
                     return;
                 }
 
-                ensureAndroidStubLibraries(context);
+                // Old manual stub library generation has been completely removed.
+                // libadrenotools handles dependency resolution internally.
 
-                // Set LD_LIBRARY_PATH to include driver and stub directories so that
-                // the dynamic linker can resolve transitive dependencies.
-                // Save the original value first so clearDriverEnv() can restore it.
-                File stubDir = new File(dir.getParentFile(), ANDROID_STUB_DIR_NAME);
+                // === WARNING: Mutating LD_LIBRARY_PATH at runtime is dangerous on Android ===
+                // The dynamic linker typically reads LD_LIBRARY_PATH once early in process startup.
+                // Changing it later can lead to inconsistent symbol resolution.
+                //
+                // AGGRESSIVE CLEANUP: With libadrenotools we strongly prefer avoiding this mutation.
                 String currentPath = System.getenv("LD_LIBRARY_PATH");
                 savedLdLibraryPath = currentPath;
+
                 StringBuilder newPath = new StringBuilder();
                 newPath.append(dir.getAbsolutePath());
-                newPath.append(":").append(stubDir.getAbsolutePath());
                 if (currentPath != null && !currentPath.isEmpty()) {
                     newPath.append(":").append(currentPath);
                 }
-                Os.setenv("LD_LIBRARY_PATH", newPath.toString(), true);
-                Log.i(TAG, "LD_LIBRARY_PATH set to include driver and stub directories");
+
+                // With libadrenotools we strongly prefer NOT mutating LD_LIBRARY_PATH.
+                boolean shouldMutateLdPath = false;
+
+                if (shouldMutateLdPath) {
+                    try {
+                        Os.setenv("LD_LIBRARY_PATH", newPath.toString(), true);
+                        Log.w(TAG, "LD_LIBRARY_PATH mutated (strongly discouraged).");
+                    } catch (ErrnoException e) {
+                        Log.e(TAG, "Failed to set LD_LIBRARY_PATH", e);
+                    }
+                } else {
+                    Log.i(TAG, "Skipping LD_LIBRARY_PATH mutation (recommended with libadrenotools)");
+                }
 
                 // Set ICD env vars (used by desktop Vulkan loaders, informational on Android)
                 Os.setenv("VK_ICD_FILENAMES", icdFile.getAbsolutePath(), true);
                 Os.setenv("VK_DRIVER_FILES", icdFile.getAbsolutePath(), true);
 
                 Os.setenv("CUSTOM_DRIVER_PATH", soPath, true);
+
+                // Also expose the directory containing the driver.
+                // The new adreno_driver loader (libadrenotools path) prefers working with directories.
+                Os.setenv("CUSTOM_DRIVER_DIR", dir.getAbsolutePath(), true);
+
                 Log.i(TAG, "Custom GPU driver environment variables set. Driver: " + soPath);
             } catch (ErrnoException e) {
                 Log.e(TAG, "Failed to set custom driver env variables", e);
@@ -240,10 +259,11 @@ public class CustomDriverUtils {
     public static void clearDriverEnv() {
         try {
             Os.unsetenv("CUSTOM_DRIVER_PATH");
+            Os.unsetenv("CUSTOM_DRIVER_DIR");
             Os.unsetenv("VK_ICD_FILENAMES");
             Os.unsetenv("VK_DRIVER_FILES");
-            // Restore LD_LIBRARY_PATH to whatever it was before setupDriverEnv() modified it,
-            // so system or other components' paths are not inadvertently removed.
+
+            // Best-effort restore of LD_LIBRARY_PATH (we avoid touching it with the libadrenotools path).
             if (savedLdLibraryPath != null) {
                 Os.setenv("LD_LIBRARY_PATH", savedLdLibraryPath, true);
             } else {
@@ -294,117 +314,13 @@ public class CustomDriverUtils {
         return null;
     }
 
-    private static void ensureAndroidStubLibraries(Context context) {
-        File driverDir = getDriverDirectory(context);
-        File dataRoot = driverDir.getParentFile();
-        if (dataRoot == null) {
-            Log.w(TAG, "Unable to resolve app data root for Android stub libraries");
-            return;
-        }
-
-        File stubDir = new File(dataRoot, ANDROID_STUB_DIR_NAME);
-        if (!stubDir.exists() && !stubDir.mkdirs()) {
-            Log.w(TAG, "Failed to create Android stub directory: " + stubDir.getAbsolutePath());
-            return;
-        }
-
-        File nativeLibDir = new File(context.getApplicationInfo().nativeLibraryDir);
-        if (!nativeLibDir.exists()) {
-            Log.w(TAG, "Native library directory is unavailable: " + nativeLibDir.getAbsolutePath());
-            return;
-        }
-
-        for (String libraryName : ANDROID_STUB_LIBRARIES) {
-            File source = new File(nativeLibDir, libraryName);
-            File destination = new File(stubDir, libraryName);
-            try {
-                if (destination.exists() && destination.length() == source.length()) {
-                    continue;
-                }
-                if (source.exists()) {
-                    copyFile(source, destination);
-                } else if (!extractLibraryFromApk(context, libraryName, destination)) {
-                    Log.w(TAG, "Android stub library not packaged in APK: " + source.getAbsolutePath());
-                    continue;
-                }
-                try {
-                    Os.chmod(destination.getAbsolutePath(), 0700);
-                } catch (ErrnoException e) {
-                    if (!destination.setExecutable(true, true)) {
-                        Log.w(TAG, "Failed to mark Android stub library executable: " + destination.getAbsolutePath(), e);
-                    }
-                }
-            } catch (IOException e) {
-                Log.w(TAG, "Failed to stage Android stub library " + libraryName, e);
-            }
-        }
-    }
-
-    private static void copyFile(File source, File destination) throws IOException {
-        File parent = destination.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            throw new IOException("Failed to create directory " + parent.getAbsolutePath());
-        }
-        try (FileInputStream input = new FileInputStream(source);
-             FileOutputStream output = new FileOutputStream(destination, false)) {
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = input.read(buffer)) != -1) {
-                output.write(buffer, 0, read);
-            }
-            output.getFD().sync();
-        }
-    }
-
-    private static boolean extractLibraryFromApk(Context context, String libraryName, File destination)
-            throws IOException {
-        String apkPath = context.getApplicationInfo().sourceDir;
-        if (apkPath == null || apkPath.isEmpty()) {
-            return false;
-        }
-
-        try (ZipFile apk = new ZipFile(apkPath)) {
-            ZipEntry libraryEntry = null;
-            for (String abi : Build.SUPPORTED_ABIS) {
-                libraryEntry = apk.getEntry("lib/" + abi + "/" + libraryName);
-                if (libraryEntry != null) {
-                    break;
-                }
-            }
-            if (libraryEntry == null) {
-                Enumeration<? extends ZipEntry> entries = apk.entries();
-                while (entries.hasMoreElements()) {
-                    ZipEntry candidate = entries.nextElement();
-                    if (!candidate.isDirectory()
-                            && candidate.getName().startsWith("lib/")
-                            && candidate.getName().endsWith("/" + libraryName)) {
-                        libraryEntry = candidate;
-                        break;
-                    }
-                }
-            }
-            if (libraryEntry == null) {
-                return false;
-            }
-
-            File parent = destination.getParentFile();
-            if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                throw new IOException("Failed to create directory " + parent.getAbsolutePath());
-            }
-            try (InputStream input = apk.getInputStream(libraryEntry);
-                 FileOutputStream output = new FileOutputStream(destination, false)) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, read);
-                }
-                output.getFD().sync();
-            }
-            return true;
-        }
-    }
+    // Old stub methods (ensureAndroidStubLibraries, copyFile, extractLibraryFromApk)
+    // were completely removed during the libadrenotools migration.
 
     public static void removeDriver(Context context) {
+        Log.i(TAG, "Removing custom driver and clearing related environment");
+        clearDriverEnv();
+
         File dir = getDriverDirectory(context);
         deleteRecursive(dir);
     }

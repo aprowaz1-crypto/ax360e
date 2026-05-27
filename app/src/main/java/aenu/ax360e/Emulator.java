@@ -69,6 +69,18 @@ public class Emulator extends aenu.emulator.Emulator{
             int thermalLevel
     );
 
+    // === New libadrenotools-based custom driver loading ===
+    public static native boolean nativeLoadCustomAdrenoDriver(String driverDir, String driverName, boolean enableRedirection);
+    public static native String nativeGetCustomDriverStatus();
+    public static native boolean nativeIsUsingCustomAdrenoDriver();
+    public static native boolean nativeIsUsingLibadrenotools();
+    public static native String nativeGetDetailedDriverStatus();
+    /**
+     * Returns true if this build was compiled with libadrenotools support (HAS_LIBADRENOTOOLS).
+     * Used by AboutActivity and info screens for accurate "driver support" reporting (p3-4).
+     */
+    public static native boolean nativeSupportsLibadrenotoolsBuild();
+
     public static int nc_open_uri_fd(Context ctx,Uri uri) {
         ParcelFileDescriptor pfd_ = null;
         try {

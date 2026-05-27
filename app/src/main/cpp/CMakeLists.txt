@@ -28,6 +28,45 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(ax360e LANGUAGES C CXX ASM)
 
+include_directories(${CMAKE_SOURCE_DIR})
+
+# =============================================================================
+# libadrenotools integration (recommended path for custom Turnip loading)
+#
+# 1. Add the submodule:
+#      git submodule add https://github.com/bylaws/libadrenotools.git external/libadrenotools
+#
+# 2. After adding, this block will include and link it.
+#
+# libadrenotools replaces most of the old fragile logic that used to be in vkapi.cpp.
+# =============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/libadrenotools/CMakeLists.txt")
+    message(STATUS "libadrenotools found - using it for custom Adreno driver loading")
+    add_subdirectory(external/libadrenotools)
+    set(HAS_LIBADRENOTOOLS ON)
+else()
+    message(FATAL_ERROR
+        "================================================================================\n"
+        "  libadrenotools submodule is MISSING.\n\n"
+        "  This project HARD REQUIRES libadrenotools for custom Adreno (Turnip) driver support.\n"
+        "  The old fragile custom loader (vkapi + stub libraries) has been completely removed.\n\n"
+        "  REQUIRED SETUP (run from repo root or the cpp directory):\n\n"
+        "    # PowerShell (Windows):\n"
+        "    cd aX360e/app/src/main/cpp\n"
+        "    git submodule add https://github.com/bylaws/libadrenotools.git external/libadrenotools\n"
+        "    git submodule update --init --recursive\n\n"
+        "    # Git Bash / WSL / Linux / macOS:\n"
+        "    cd aX360e/app/src/main/cpp\n"
+        "    git submodule add https://github.com/bylaws/libadrenotools.git external/libadrenotools\n"
+        "    git submodule update --init --recursive\n\n"
+        "  After the submodule is present, delete any stale build intermediates:\n"
+        "    - In Android Studio: Build > Clean Project, then Build > Rebuild Project\n"
+        "    - Or manually: rm -rf .cxx build\n\n"
+        "  Then sync Gradle and build.\n"
+        "================================================================================\n"
+    )
+endif()
+
 add_library(emu SHARED)
 set_target_properties(emu PROPERTIES OUTPUT_NAME "e")
 
@@ -73,9 +112,10 @@ target_sources(emu
         xe_system_ax360e.cpp
         xenia/src/xenia/app/emulator_window.cc
         cpuinfo.cpp
-        vkapi.cpp
         vkutil.cpp
         vulkan_test_jni.cpp
+        adreno_driver.cpp
+        vk_symbols.cpp   # Shared symbol resolution (replaced legacy vkapi.cpp)
 )
 # python xenia-build premake --target_os=android --devenv=cmake
 #add_subdirectory(xenia/ab EXCLUDE_FROM_ALL)
@@ -151,36 +191,22 @@ target_compile_options(xenia-cpu-backend-a64 PRIVATE
 )
 endif()
 
-add_library(cutils SHARED dummy_libs.cpp)
-add_library(utils SHARED dummy_libs.cpp)
-add_library(hardware SHARED dummy_libs.cpp)
-add_library(hidlbase SHARED dummy_libs.cpp)
-add_library(nativewindow SHARED dummy_libs.cpp)
-add_library(android_stub_sync SHARED dummy_libs.cpp)
-set_target_properties(android_stub_sync PROPERTIES OUTPUT_NAME "sync")
-add_library(android_stub_android SHARED dummy_libs.cpp)
-set_target_properties(android_stub_android PROPERTIES OUTPUT_NAME "android")
-add_library(backtrace SHARED dummy_libs.cpp)
-add_library(unwindstack SHARED dummy_libs.cpp)
-add_library(android_stub_log SHARED dummy_libs.cpp)
-set_target_properties(android_stub_log PROPERTIES OUTPUT_NAME "log")
-
-target_link_libraries(cutils PRIVATE log)
-target_link_libraries(utils PRIVATE log)
-target_link_libraries(hardware PRIVATE log)
-target_link_libraries(hidlbase PRIVATE log)
-target_link_libraries(nativewindow PRIVATE log)
-target_link_libraries(android_stub_sync PRIVATE log)
-target_link_libraries(android_stub_android PRIVATE log)
-target_link_libraries(backtrace PRIVATE log)
-target_link_libraries(unwindstack PRIVATE log)
-target_link_libraries(android_stub_log PRIVATE log)
+# Old android stub libraries (cutils, hardware, sync, etc.) have been completely removed.
+# They were only required for the pre-libadrenotools manual loading strategy.
+# libadrenotools handles dependency resolution internally.
 
 target_include_directories(emu PRIVATE
         xenia
         xenia/src
         xenia/third_party
 )
+
+if(HAS_LIBADRENOTOOLS)
+    target_include_directories(emu PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/libadrenotools/include
+    )
+    target_compile_definitions(emu PRIVATE HAS_LIBADRENOTOOLS=1)
+endif()
 
 target_link_libraries(emu
         PRIVATE
@@ -221,16 +247,9 @@ target_link_libraries(emu
         pugixml
         xenia-hid-skylander
         xenia-patcher
-        cutils
-        utils
-        hardware
-        hidlbase
-        nativewindow
-        android_stub_sync
-        android_stub_android
-        backtrace
-        unwindstack
-        android_stub_log
+
+        # libadrenotools (for reliable custom Turnip driver loading)
+        $<$<BOOL:${HAS_LIBADRENOTOOLS}>:adrenotools>
 )
 
 #xenia-patcher

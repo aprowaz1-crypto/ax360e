@@ -24,9 +24,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ScrollView;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -143,6 +145,9 @@ public class MainActivity extends AppCompatActivity {
         helper.initializeViews(findViewById(android.R.id.content));
         helper.setAdapter(gameListAdapter);
 
+        // Phase 3 UX polish (p3-1): Show modern driver status indicators (toolbar + empty_state)
+        updateAllDriverStatusIndicators();
+
         // Wire up the "Set Game Directory" button in the empty state
         View btnSetGameDir = findViewById(R.id.btn_set_game_dir);
         if (btnSetGameDir != null) {
@@ -153,6 +158,159 @@ public class MainActivity extends AppCompatActivity {
             // Context menu registered on adapter items via long-click above
         }
         show_game_list();
+
+        // Phase 3 UX: Show warning if custom driver is installed but not active via modern path
+        check_custom_driver_status();
+    }
+
+    private void check_custom_driver_status() {
+        try {
+            if (CustomDriverUtils.isDriverInstalled(this)) {
+                boolean usingModern = false;
+                boolean active = false;
+                String detailed = null;
+                try {
+                    usingModern = Emulator.nativeIsUsingLibadrenotools();
+                    active = Emulator.nativeIsUsingCustomAdrenoDriver();
+                    detailed = Emulator.nativeGetDetailedDriverStatus();
+                } catch (Throwable ignored) {}
+
+                if (active && usingModern) {
+                    // Good - modern driver is working. Optionally log.
+                    android.util.Log.i("MainActivity", "Custom driver active via libadrenotools");
+                    return; // Clean state, no warnings
+                } else if (active) {
+                    Toast.makeText(this, "Custom GPU driver is active (legacy path). Consider updating to libadrenotools build.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                // === Bad / inactive state: richest possible feedback ===
+                StringBuilder richMsg = new StringBuilder();
+                richMsg.append("⚠ Custom GPU Driver Health\n\n");
+
+                boolean hasDetailed = (detailed != null && !detailed.isEmpty() && !detailed.contains("No custom driver status"));
+                if (hasDetailed) {
+                    richMsg.append(detailed).append("\n\n");
+                } else {
+                    richMsg.append("A custom driver package is installed on disk but is NOT currently active in the emulator process.\n\n");
+                }
+
+                // Always provide clear, numbered actionable advice
+                richMsg.append("STEPS TO ACTIVATE / FIX:\n");
+                richMsg.append("1. Force-stop aX360e completely and restart it\n");
+                richMsg.append("2. Open Settings → Custom GPU Driver → \"Turnip Driver Information\"\n");
+                richMsg.append("3. If you see ERROR or load failure: tap Remove then re-install a fresh compatible ZIP\n");
+                richMsg.append("4. In any Game Profile, set \"Driver Selection\" to Default (or Custom)\n");
+                richMsg.append("5. Confirm this build supports libadrenotools (see About screen)\n");
+                richMsg.append("6. Check logcat (tag AdrenoDriver) for native dlopen errors if issues persist\n\n");
+                richMsg.append("Tap toolbar subtitle or Driver Information dialog for live diagnostics.");
+
+                final String finalMessage = richMsg.toString();
+
+                // One-time "driver health check" hint for first bad-state detection after install
+                try {
+                    android.content.SharedPreferences prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(this);
+                    final String HINT_KEY = "p3_driver_health_hint_shown_v1";
+                    if (!prefs.getBoolean(HINT_KEY, false)) {
+                        prefs.edit().putBoolean(HINT_KEY, true).apply();
+                        // Show as a dedicated one-time dialog for maximum visibility on first encounter
+                        new AlertDialog.Builder(this)
+                            .setTitle("Driver Health Check")
+                            .setMessage(finalMessage)
+                            .setPositiveButton(getString(R.string.view_full_driver_status), (d, w) -> showDriverQuickStatus())
+                            .setNegativeButton("Got it", null)
+                            .show();
+                        return;
+                    }
+                } catch (Exception ignored) {}
+
+                // For complex / ERROR cases or long messages: use small dialog instead of toast
+                if (finalMessage.contains("ERROR") || finalMessage.length() > 220) {
+                    new AlertDialog.Builder(this)
+                        .setTitle("Custom Driver Status")
+                        .setMessage(finalMessage)
+                        .setPositiveButton(getString(R.string.driver_info), (d, w) -> showDriverQuickStatus())
+                        .setNegativeButton("Dismiss", null)
+                        .show();
+                } else {
+                    Toast.makeText(this, finalMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed to check custom driver status", e);
+        }
+    }
+
+    private void updateDriverStatusOnToolbar() {
+        try {
+            com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+            if (toolbar == null) return;
+
+            boolean usingModern = false;
+            boolean active = false;
+
+            try {
+                usingModern = Emulator.nativeIsUsingLibadrenotools();
+                active = Emulator.nativeIsUsingCustomAdrenoDriver();
+            } catch (Throwable ignored) {}
+
+            boolean hasCustomDriver = CustomDriverUtils.isDriverInstalled(this);
+
+            if (active && usingModern) {
+                toolbar.setSubtitle(getString(R.string.toolbar_subtitle_active));
+                // Make toolbar clickable to show full driver details (nice Phase 3 UX)
+                toolbar.setOnClickListener(v -> showDriverQuickStatus());
+            } else if (hasCustomDriver) {
+                toolbar.setSubtitle(getString(R.string.toolbar_subtitle_custom));
+                toolbar.setOnClickListener(v -> showDriverQuickStatus());
+            } else {
+                toolbar.setSubtitle(null);
+                toolbar.setOnClickListener(null);
+            }
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed to update driver status on toolbar", e);
+        }
+    }
+
+    private void showDriverQuickStatus() {
+        // p3-2: Consistent polished UX with EmulatorSettings dialog (rich sections + emojis + device GPU info)
+        try {
+            TurnipDriverInfo driverInfo = TurnipDriverInfo.detect(this);
+            final String report = driverInfo.getRichDriverReport(this);
+
+            // Match the high-quality custom scrollable view used in settings for consistency
+            final ScrollView scrollView = new ScrollView(this);
+            final TextView contentView = new TextView(this);
+            contentView.setText(report);
+            contentView.setTextIsSelectable(true);
+            contentView.setPadding(32, 24, 32, 24);
+            contentView.setTextSize(14f);
+            scrollView.addView(contentView, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            final String[] currentReportRef = new String[]{report};
+
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.gpu_driver_status_title))
+                    .setView(scrollView)
+                    // Prominent Copy button for reliability and visibility (matches settings dialog)
+                    .setPositiveButton(getString(R.string.copy_to_clipboard), (dialog, which) -> {
+                        try {
+                            android.content.ClipboardManager clipboard =
+                                    (android.content.ClipboardManager) getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("GPU Driver Status", currentReportRef[0]);
+                            clipboard.setPrimaryClip(clip);
+                            Toast.makeText(this, getString(R.string.driver_info_copied), Toast.LENGTH_SHORT).show();
+                        } catch (Exception ex) {
+                            Toast.makeText(this, getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton(getString(R.string.close), null)
+                    .show();
+        } catch (Exception e) {
+            Toast.makeText(this, getString(R.string.driver_status_unavailable), Toast.LENGTH_SHORT).show();
+        }
     }
 
     void on_create(){
@@ -200,6 +358,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(!Application.should_delay_load()){
             on_create();
+            check_custom_driver_status();
             return;
         }
 
@@ -213,6 +372,7 @@ public class MainActivity extends AppCompatActivity {
                     Emulator.load_library();
                     Thread.sleep(100);
                     delay_on_create.sendEmptyMessage(DELAY_ON_CREATE);
+                    runOnUiThread(MainActivity.this::updateAllDriverStatusIndicators);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -226,6 +386,111 @@ public class MainActivity extends AppCompatActivity {
         if(progress_task!=null){
             progress_task.force_close();
             progress_task=null;
+        }
+    }
+
+    /**
+     * Phase 3 UX Polish (p3-1 Main Screen Polish):
+     * Update driver status indicators when activity resumes (e.g. returning from Settings
+     * after changing custom driver). Uses TurnipDriverInfo.detect() + native APIs.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateAllDriverStatusIndicators();
+    }
+
+    /**
+     * Centralized driver status updates for toolbar (existing) + new empty_state indicator.
+     * Called on create, resume, and after driver-relevant changes.
+     */
+    private void updateAllDriverStatusIndicators() {
+        updateDriverStatusOnToolbar();
+        updateEmptyStateDriverStatus();
+        updateDriverStatusHeader();
+    }
+
+    private void updateEmptyStateDriverStatus() {
+        try {
+            TextView statusView = findViewById(R.id.empty_state_driver_status);
+            if (statusView == null) return;
+
+            TurnipDriverInfo info = TurnipDriverInfo.detect(this);
+
+            if (!info.isInstalled()) {
+                // p3-6 polish: only show driver badge in empty state when a custom driver is actually installed (consistent with header logic; avoids clutter for stock users)
+                statusView.setVisibility(View.GONE);
+                return;
+            }
+
+            String text;
+            if (info.isUsingLibadrenotools() && info.isActiveInProcess()) {
+                text = getString(R.string.driver_badge_libadrenotools_active);
+            } else if (info.isUsingLibadrenotools()) {
+                text = getString(R.string.driver_badge_libadrenotools_installed);
+            } else if (info.isActiveInProcess()) {
+                text = getString(R.string.driver_badge_legacy);
+            } else {
+                text = getString(R.string.driver_badge_inactive);
+            }
+
+            statusView.setText(text);
+            // Visible when empty_state is shown; minimal styling (11sp, alpha 0.75) in layout prevents distraction
+            statusView.setVisibility(View.VISIBLE);
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed to update empty_state driver status", e);
+        }
+    }
+
+    /**
+     * Subtle header line shown above the game list (inside scrolling AppBar) only when
+     * games are displayed (non-empty) AND a custom driver is installed/active.
+     * Uses TurnipDriverInfo + native APIs. Non-intrusive (small, low alpha, scrolls away).
+     */
+    private void updateDriverStatusHeader() {
+        try {
+            TextView header = findViewById(R.id.driver_status_header);
+            if (header == null) return;
+
+            TurnipDriverInfo info = TurnipDriverInfo.detect(this);
+
+            if (!info.isInstalled()) {
+                header.setVisibility(View.GONE);
+                return;
+            }
+
+            // Only show subtle header when games are actually listed (non-empty list case).
+            // Empty state has its own dedicated status badge.
+            int gameCount = 0;
+            if (gameListAdapter != null) {
+                try {
+                    gameCount = gameListAdapter.getItemCount();
+                } catch (Exception ignored) {}
+            }
+            if (gameCount <= 0) {
+                header.setVisibility(View.GONE);
+                return;
+            }
+
+            String text;
+            if (info.isUsingLibadrenotools() && info.isActiveInProcess()) {
+                text = getString(R.string.driver_header_active);
+            } else if (info.isUsingLibadrenotools()) {
+                text = getString(R.string.driver_header_installed);
+            } else if (info.isActiveInProcess()) {
+                text = getString(R.string.driver_badge_legacy);
+            } else {
+                text = getString(R.string.driver_badge_inactive);
+            }
+
+            header.setText(text);
+            header.setVisibility(View.VISIBLE);
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed to update driver_status_header", e);
+            try {
+                TextView h = findViewById(R.id.driver_status_header);
+                if (h != null) h.setVisibility(View.GONE);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -476,7 +741,14 @@ public class MainActivity extends AppCompatActivity {
         }
         // Show/hide empty state
         if (helper != null) {
-            helper.showEmptyState(adapter.metas == null || adapter.metas.isEmpty());
+            boolean isEmpty = adapter.metas == null || adapter.metas.isEmpty();
+            helper.showEmptyState(isEmpty);
+            if (isEmpty) {
+                // Ensure driver status badge is populated when empty state is visible
+                updateEmptyStateDriverStatus();
+            }
+            // Subtle header above list updates (only meaningful for custom driver cases)
+            updateDriverStatusHeader();
         }
     }
     static void save_pref_game_dir(Context ctx,Uri uri){

@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: WTFPL
 package aenu.ax360e;
 
-import android.app.Activity;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebView;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -100,8 +102,153 @@ public class AboutActivity extends AppCompatActivity {
             }
         });
 
-        text.setText(Emulator.get.simple_device_info());
+        String info = Emulator.get.simple_device_info();
+
+        // === Deepened driver status integration (p3-4): TurnipDriverInfo + native detailed + build flag ===
+        String driverSection = "\n\n════════════════════════════════\n"
+                + getString(R.string.driver_status_section) + "\n"
+                + "════════════════════════════════\n";
+
+        try {
+            TurnipDriverInfo driverInfo = TurnipDriverInfo.detect(this);
+
+            // Prominent one-line summary in the main about text (discoverable, nicely formatted)
+            if (driverInfo.isInstalled()) {
+                driverSection += driverInfo.getFormattedInfo() + "\n";
+
+                // Add device compatibility snippet when available
+                String compat = driverInfo.getDeviceCompatibilityReport();
+                if (compat != null && !compat.trim().isEmpty()) {
+                    driverSection += "\n" + compat.trim() + "\n";
+                }
+            } else {
+                driverSection += getString(R.string.driver_summary_no_driver) + "\n"
+                        + "Install via Settings → Custom Drivers for best Adreno performance.\n";
+            }
+
+            // Native detailed status (now richer post p3-4 native enhancement)
+            try {
+                String detailed = Emulator.nativeGetDetailedDriverStatus();
+                if (detailed != null && !detailed.isEmpty() && !detailed.contains("No custom driver status")) {
+                    driverSection += "\n[Native Loader Details]\n" + detailed + "\n";
+                }
+            } catch (Throwable ignored) {}
+
+            // Build capability (new native)
+            try {
+                boolean buildSupports = Emulator.nativeSupportsLibadrenotoolsBuild();
+                driverSection += "\n" + (buildSupports
+                        ? getString(R.string.build_supports_libadrenotools)
+                        : getString(R.string.build_no_libadrenotools)) + "\n";
+            } catch (Throwable ignored) {}
+
+            // Quick hint for user (p3-6 updated)
+            driverSection += "\n(Tap Driver Info / Troubleshooting buttons above for the full rich report + copy + live refresh. See toolbar and empty-state badges too.)";
+        } catch (Exception e) {
+            driverSection += "[Driver status detection failed: " + e.getMessage() + "]";
+        }
+
+        info += driverSection;
+
+        text.setText(info);
         text.setTextIsSelectable(true);
         text.setLongClickable(true);
+
+        // === Wire up the new dedicated Driver Info action buttons (prominent at top of screen) ===
+        setupDriverActionButtons();
+    }
+
+    private void setupDriverActionButtons() {
+        // "Driver Info" - opens the rich formatted dialog (re-uses polished UX from Settings)
+        View driverInfoBtn = findViewById(R.id.driver_info_btn);
+        if (driverInfoBtn != null) {
+            driverInfoBtn.setOnClickListener(v -> showDriverInfoDialog());
+        }
+
+        // Troubleshooting quick action dialog with actionable tips
+        View troubleshootBtn = findViewById(R.id.driver_troubleshoot_btn);
+        if (troubleshootBtn != null) {
+            troubleshootBtn.setOnClickListener(v -> showTroubleshootingDialog());
+        }
+
+        // Quick link/action to open full Custom Driver settings (where the pref for Driver Info also lives)
+        View settingsBtn = findViewById(R.id.driver_settings_btn);
+        if (settingsBtn != null) {
+            settingsBtn.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(AboutActivity.this, EmulatorSettings.class);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Could not open Settings", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    /**
+     * Shows the rich, emoji-sectioned full driver report dialog.
+     * Matches the high-quality implementation used in EmulatorSettings and MainActivity toolbar.
+     * Includes Copy + Refresh for excellent live UX.
+     */
+    private void showDriverInfoDialog() {
+        try {
+            final TurnipDriverInfo[] currentInfo = new TurnipDriverInfo[1];
+            currentInfo[0] = TurnipDriverInfo.detect(this);
+
+            final String[] currentReport = new String[1];
+            currentReport[0] = currentInfo[0].getRichDriverReport(this);
+
+            final ScrollView scrollView = new ScrollView(this);
+            final TextView contentView = new TextView(this);
+            contentView.setText(currentReport[0]);
+            contentView.setTextIsSelectable(true);
+            contentView.setPadding(32, 24, 32, 24);
+            contentView.setTextSize(14f);
+            scrollView.addView(contentView, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.turnip_driver_info_title))
+                    .setView(scrollView)
+                    .setPositiveButton(getString(R.string.copy_to_clipboard), (dialog, which) -> {
+                        try {
+                            android.content.ClipboardManager clipboard =
+                                    (android.content.ClipboardManager) getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("Turnip Driver Info", currentReport[0]);
+                            clipboard.setPrimaryClip(clip);
+                            Toast.makeText(this, getString(R.string.driver_info_copied), Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Toast.makeText(this, getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNeutralButton(getString(R.string.refresh), (dialog, which) -> {
+                        ((androidx.appcompat.app.AlertDialog) dialog).dismiss();
+                        new Handler(Looper.getMainLooper()).post(this::showDriverInfoDialog);
+                    })
+                    .setNegativeButton(getString(R.string.close), null)
+                    .create().show();
+        } catch (Exception e) {
+            Toast.makeText(this, getString(R.string.driver_status_unavailable), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showTroubleshootingDialog() {
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.driver_troubleshooting_title))
+                    .setMessage(getString(R.string.driver_troubleshooting_content))
+                    .setPositiveButton(getString(R.string.view_full_driver_report), (d, w) -> showDriverInfoDialog())
+                    .setNegativeButton(getString(R.string.close), null)
+                    .setNeutralButton(getString(R.string.open_driver_settings), (d, w) -> {
+                        try {
+                            startActivity(new Intent(this, EmulatorSettings.class));
+                        } catch (Exception ignored) {}
+                    })
+                    .show();
+        } catch (Exception e) {
+            // Fallback
+            Toast.makeText(this, getString(R.string.driver_troubleshooting_content), Toast.LENGTH_LONG).show();
+        }
     }
 }
