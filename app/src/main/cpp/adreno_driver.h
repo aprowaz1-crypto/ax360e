@@ -34,3 +34,16 @@ bool supports_libadrenotools_build();
 
 // Returns a richer status string including runtime driver detection when possible.
 std::string get_detailed_driver_status();
+
+// ============================================================================
+// Legacy compatibility shims (always available).
+// These match the old vkapi API so existing call sites (vulkan_test_jni, etc.)
+// continue to compile after the vkapi.cpp deletion.
+// The implementations live in adreno_driver.cpp and forward to the new loader
+// when is_adreno_custom == true.
+// ============================================================================
+extern "C" {
+void vk_load(const char* lib_path, bool is_adreno_custom);
+void vk_unload();
+bool vk_is_loaded();
+}
